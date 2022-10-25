@@ -2,6 +2,6 @@ from scapy.all import *
 from scapy.all import IP,ICMP
 
 def handle(message):
-    print(message.decode())
+    print(message)
 
-sniff(filter="icmp", prn=lambda x:handle(x))
+sniff(filter="icmp", prn=lambda x:x.handle("%Raw.load%"))

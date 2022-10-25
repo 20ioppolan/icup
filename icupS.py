@@ -24,6 +24,7 @@ def addclient(clients, arguments, id):
     id += 1
     return id
 
+# Add clients with the JSON configuration
 def json_add_client(ip, clients, id):
     clients[id] = ip
     if DEBUG: print(f"[DEBUG] Client {id} added at {clients.get(id)}")
@@ -69,6 +70,7 @@ def sendtoall(arguments, clients):
         if DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
         send(evil)
 
+# Place icupS into single client mode
 def shell(clients, arguments):
     print("Type \"kill\" to exit")
     while(True):

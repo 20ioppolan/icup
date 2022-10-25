@@ -1,7 +1,9 @@
 from scapy.all import * 
 from scapy.all import ICMP,IP
+import json
 
 DEBUG = True
+JSONFILE = "example.json"
 
 def print_help():
     print("\taddclient <IP_ADDRESS>   Adds new client by IP")
@@ -38,20 +40,17 @@ def removeallclients(clients):
 
 # Send command to client by ID via ICMP data
 def send_command(arguments, clients):
-    if len(arguments)<2: 
-        print("[ERROR] Specify client by ID and message")
-    else:
-        if len(arguments)<3: 
-            print("[ERROR] Specify message to send to client")
+    try:
+        clientcommand = arguments[1] 
+        clienttokens = clientcommand.split(" ", 1)
+        if clients.get(int(clienttokens[0])) != None:
+            evil = IP(dst=clients.get(int(clienttokens[0])))/ICMP(type=8)/(clienttokens[1])
+            send(evil)
+            if DEBUG: print(f"[DEBUG] \"{clienttokens[1]}\" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))}")
         else:
-            clientcommand = arguments[1] 
-            clienttokens = clientcommand.split(" ", 1)
-            if clients.get(int(clienttokens[0])) != None:
-                evil = IP(dst=clients.get(int(clienttokens[0])))/ICMP(type=8)/(clienttokens[1])
-                send(evil)
-                if DEBUG: print(f"[DEBUG] \"{clienttokens[1]}\" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))}")
-            else:
-                print(f"[ERROR] No client at ID {clienttokens[0]}")
+            print(f"[ERROR] No client at ID {clienttokens[0]}")
+    except:
+        print("[ERROR] Usage: send <ID> <message>")
 
 def sendtoall(arguments, clients):
     for client in clients:

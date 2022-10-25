@@ -19,6 +19,13 @@ def print_help():
 def addclient(clients, arguments, id):
     clients[id] = arguments[1] 
     if DEBUG: print(f"[DEBUG] Client {id} added at {clients.get(id)}") 
+    id += 1
+    return id
+
+def json_add_client(ip, clients, id):
+    clients[id] = ip
+    id += 1
+    return id
 
 # Show all clients within the client dictionary 
 def showclients(clients):
@@ -70,6 +77,15 @@ def valid_IP(arguments):
             return False
     return True
 
+def generate_targets(JSONFILE, clients, id):
+    f = open(JSONFILE, 'r')
+    data = json.loads(f.read())
+    for jsonip in data:
+        ip = data[jsonip]
+        id = json_add_client(ip, clients, id)
+    f.close()
+    return id
+
 def main():
     clients = dict()
     id = 0
@@ -83,8 +99,7 @@ def main():
                 print("[ERROR] Missing client IP field")
                 continue
             if valid_IP(arguments): 
-                addclient(clients, arguments, id)
-                id += 1
+                id = addclient(clients, arguments, id)
             else:
                 print("[ERROR] Invalid IP Address")
         elif arguments[0] == "showclients":
@@ -97,6 +112,8 @@ def main():
             send_command(arguments, clients)
         elif arguments[0] == "sendtoall":
             sendtoall(arguments, clients)
+        elif arguments[0] == "test":
+            id = generate_targets(JSONFILE, clients, id)
         elif arguments[0] == "kill":
             break
         elif arguments[0] == "help":

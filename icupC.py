@@ -1,7 +1,7 @@
 from scapy.all import *
 from scapy.all import IP,ICMP
 
-sniff(prn=lambda x:x.sprintf("%Raw.laod%"))
+sniff(prn=lambda x:x.sprintf("%Raw.load%"))
 
 # for packet in pkts:
 #      if  str(packet.getlayer(ICMP).type) == "8": 

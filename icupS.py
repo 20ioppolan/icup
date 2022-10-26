@@ -122,8 +122,11 @@ def listen(pkt):
     src = pkt[IP].dst 
     payload = str(pkt.payload)
     parsed = re.split('#{3}', payload)
-    command = parsed[1][:-1]
-    print(f"Recieved: {command} from {src}")
+    if len(parsed) == 1:
+        return
+    else:
+        command = parsed[1][:-1]
+        print(f"Recieved: {command} from {src}")
 
 def sniffer():
     sniff(filter="icmp[icmptype] == icmp-echoreply", prn=listen)

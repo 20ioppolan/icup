@@ -139,7 +139,9 @@ def listen(pkt):
         return
     else:
         command = parsed[1][:-1]
-        print(f"Recieved: {command} from {src}")
+        command.removeprefix("b\'")
+        command.removesuffix("\\\\n\'")
+        print(f"Recieved:\n\t{command}\nfrom {src}")
 
 def sniffer():
     sniff(filter="icmp[icmptype] == icmp-echoreply", prn=listen)

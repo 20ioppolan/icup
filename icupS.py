@@ -161,7 +161,7 @@ def listen(pkt):
     if len(parsed) == 1:
         return
     else:
-        command = parsed[1][:-1]
+        command = parsed[1][4:-1]
         print(f"Recieved:\n\t{command} from {src}")
 
 def sniffer():

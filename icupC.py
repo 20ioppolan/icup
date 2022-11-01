@@ -57,9 +57,9 @@ def handle(pkt):
         else:
             print("Error?")
 
-        command = command[4:]
+        command = command[2:]
         if SSM: command = encrypt_decrypt(command)
-        
+
         if execute: execute_command(src, command, SSM)
         else: reply(src, command, SSM)
     

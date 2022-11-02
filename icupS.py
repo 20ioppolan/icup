@@ -159,6 +159,8 @@ def generate_targets(JSONFILE, clients, id):
     f.close()
     return id
 
+# TODO Parse newlines from output
+
 def listen(pkt):
     src = pkt[IP].dst 
     payload = str(pkt.payload)

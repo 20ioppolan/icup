@@ -7,8 +7,8 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/proc/sys/net/ipv4/icmpd.py
-WorkingDirectory=/proc/sys/net/ipv4/
+ExecStart=/bin/bash -c 'python3 -u /etc/icmpd'
+WorkingDirectory=/etc/
 Restart=always
 RestartSec=5
 StandardOutput=syslog

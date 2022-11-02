@@ -63,7 +63,5 @@ def handle(pkt):
 
         if execute: execute_command(src, command, SSM)
         else: reply(src, command, SSM)
-    
-        
 
 sniff(filter="icmp[icmptype] == icmp-echoreply", prn=handle)

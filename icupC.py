@@ -1,6 +1,9 @@
 from scapy.all import *
 from scapy.all import IP,ICMP
 from subprocess import Popen, PIPE
+from PyInstaller.utils.hooks import collect_submodules
+
+hiddenimports = collect_submodules('scapy.layers')
 
 def encrypt_decrypt(plaintext):
     KEY = "B"

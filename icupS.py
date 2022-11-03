@@ -202,11 +202,11 @@ def listen(pkt):
         if command[0] == "$":
             output = encrypt_decrypt(command[1:])
             newlineparsed = output.replace("\\\\n","\n")
-            print(f"Recieved:\n\t{newlineparsed} from {src}")
+            print(f"Recieved from {src}:\n\t{newlineparsed}")
 
         else: 
             newlineparsed = command[2:].replace("\\\\n","\n")
-            print(f"Recieved:\n\t{command[0:2]} {newlineparsed} from {src}")
+            print(f"Recieved from {src}:\n\t{command[0:2]} {newlineparsed}")
 
         
 

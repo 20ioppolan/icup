@@ -28,20 +28,22 @@ def print_title():
     print("        \/      |__|        \__\      \/               /__/") 
 
 def print_help():
-    print("\taddclient <IP_ADDRESS>   Adds new client by IP")
-    print("\tls                       Show all added clients")
-    print("\tremoveclient <ID>        Removes a client by ID")
-    print("\tremoveallclients         Removes all clients")
-    print("\tsend <ID> <message>      Send message to client at ID")
-    print("\texe <ID> <command>       Send command to client at ID")
-    print("\tsendtoall <message>      Sends <message> to all clients")
-    print("\texeonall <command>       Execute <command> on all clients")
-    print("\tloadclients              Loads all clients specified in JSONFILE")
-    print("\tcheckalive               Generates a board of replying clients")
-    # print("\tshell <ID>               Creates a direct line with client at ID")
-    print("\tkill                     Stops server")
-    print("\tssm                      Enables Super Secret Mode")                    
-    print("\thelp                     Prints this")
+    print("\taddclient <IP_ADDRESS>       Adds new client by IP")
+    print("\tls                           Show all added clients")
+    print("\tremoveclient <ID>            Removes a client by ID")
+    print("\tremoveallclients             Removes all clients")
+    print("\tsend <ID> <message>          Send message to client at ID")
+    print("\texe <ID> <command>           Send command to client at ID")
+    print("\tsendtoall <message>          Sends <message> to all clients")
+    print("\texeonall <command>           Execute <command> on all clients")
+    print("\tsendtoteam <team> <command>  Send <command> to all <team> clients")
+    print("\texeonteam <team> <command>   Execute <command> on all <team> clients")
+    print("\tloadclients                  Loads all clients specified in JSONFILE")
+    print("\tcheckalive                   Generates a board of replying clients")
+    # print("\tshell <ID>                   Creates a direct line with client at ID")  [FIX]
+    print("\tkill                         Stops server")
+    print("\tssm                          Enables Super Secret Mode")                    
+    print("\thelp                         Prints this")
 
 # Add clients to the dictionary of clients, the IP from arguments, and the id
 def addclient(clients, arguments, id):
@@ -237,9 +239,9 @@ def show_alive(clients):
     global ALIVE
     for value in ALIVE:
         if ALIVE[value] == True:
-            print(f"\03392m[{list(clients.keys())[list(clients.values()).index(value)]}]\033[0m", end=" ")
+            print(f"\033[92m[{list(clients.keys())[list(clients.values()).index(value)]}]\033[0m", end=" ")
         elif ALIVE[value] == False: 
-            print(f"\03391m[{list(clients.keys())[list(clients.values()).index(value)]}]\033[0m", end=" ")
+            print(f"\033[91m[{list(clients.keys())[list(clients.values()).index(value)]}]\033[0m", end=" ")
     print()
 
 # Starts the sniffing thread

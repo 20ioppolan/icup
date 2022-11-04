@@ -1,9 +1,3 @@
-# Author: Anthony Ioppolo
-# My first attempt at a Red Team tool, gonna make it cool dont worry about it
-# ICMP C2, think about it
-# Currently planning to store itself as /etc/icmpd
-
-
 from scapy.all import *
 from scapy.all import IP,ICMP
 from subprocess import Popen, PIPE

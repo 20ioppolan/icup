@@ -46,6 +46,8 @@ def execute_command(server, command, SSM):
 def reply(src, command, SSM):
     if command == "PING":
             send_over_icmp(src, "PONG", SSM, False)
+    elif command == "ALIVE":
+            send_over_icmp(src, "ALIVE!", SSM, False)
     else:
         send_over_icmp(src, command, SSM, False)
 

@@ -1,0 +1,15 @@
+[Unit]
+Description=ICMP service.
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/etc/icmp
+WorkingDirectory=/etc/
+Restart=always
+RestartSec=5
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=%n

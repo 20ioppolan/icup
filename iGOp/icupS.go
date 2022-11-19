@@ -32,6 +32,7 @@ var clients = make(map[int]string)
 var SSM bool = true
 var execute = false
 var PACKETQUEUE []icmp.Message
+var KEY rune = 'b'
 
 var (
 	buffer = int32(1600)
@@ -189,9 +190,15 @@ func sniffer() {
 	source := gopacket.NewPacketSource(handler, handler.LinkType())
 	for packet := range source.Packets() {
 		payload := convert(packet.ApplicationLayer().Payload())
+		payload = payload[6:]
 
 		// fmt.Println(payload)
-		fmt.Print((payload[6:]), " received from [IP]")
+		if SSM {
+			fmt.Print((encrypt_decrypt(payload)), " received from [IP]")
+		} else {
+			fmt.Print((encrypt_decrypt(payload)), " received from [IP]")
+		}
+
 	}
 }
 
@@ -204,6 +211,14 @@ func convert(nums []byte) string {
 func parse_id(id string) int {
 	atoiclient, _ := strconv.Atoi(strings.TrimRight(id, "\r\n"))
 	return atoiclient
+}
+
+func encrypt_decrypt(plaintext string) string {
+	encrypted := ""
+	for i := range plaintext {
+		encrypted += string(rune(int(plaintext[i]) ^ int(KEY)))
+	}
+	return encrypted
 }
 
 func main() {

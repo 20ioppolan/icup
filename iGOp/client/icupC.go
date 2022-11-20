@@ -124,9 +124,9 @@ func sniffer(c icmp.PacketConn) {
 	source := gopacket.NewPacketSource(handler, handler.LinkType())
 	for packet := range source.Packets() {
 		payload := convert(packet.ApplicationLayer().Payload())
-		payload = payload[7:]
 		header := payload[0:7]
 		if strings.HasPrefix(header, "!!!") {
+			payload = payload[7:]
 			fmt.Print((payload))
 			response := "Got it"
 			PACKETQUEUE = make([]icmp.Message, (len(response)/1460)+1)

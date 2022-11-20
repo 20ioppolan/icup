@@ -110,7 +110,7 @@ func showclients() {
 
 func generate_header(segment int, segmented bool) string {
 	segHeader := strconv.Itoa(segment)
-	header := "###"
+	header := "!!!"
 	// ### is server flag, value 1 (SSM) is Encryption option, 2 is execution option
 	// 3 is segment for oversized packets, 4 is segment ID
 	if SSM {
@@ -199,7 +199,7 @@ func deviceExists(name string) bool {
 }
 
 func sniffer() {
-	handler, err := pcap.OpenLive("\\Device\\NPF_Loopback", buffer, false, pcap.BlockForever)
+	handler, err := pcap.OpenLive("ens160", buffer, false, pcap.BlockForever)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -210,15 +210,20 @@ func sniffer() {
 	source := gopacket.NewPacketSource(handler, handler.LinkType())
 	for packet := range source.Packets() {
 		payload := convert(packet.ApplicationLayer().Payload())
-		payload = payload[7:]
+		header := payload[0:7]
+		if strings.HasPrefix(header, "###") {
+			payload = payload[7:]
 
-		ipLayer := packet.Layer(layers.LayerTypeIPv4)
-		ip, _ := ipLayer.(*layers.IPv4)
+			ipLayer := packet.Layer(layers.LayerTypeIPv4)
+			ip, _ := ipLayer.(*layers.IPv4)
 
-		if SSM {
-			fmt.Print((encrypt_decrypt(payload)), " received from ", ip.SrcIP)
+			if SSM {
+				fmt.Print((encrypt_decrypt(payload)), " received from ", ip.SrcIP)
+			} else {
+				fmt.Print((payload), " received from ", ip.SrcIP)
+			}
 		} else {
-			fmt.Print((payload), " received from ", ip.SrcIP)
+			continue
 		}
 	}
 }

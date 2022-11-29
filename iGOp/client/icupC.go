@@ -138,7 +138,7 @@ func sniffer(c icmp.PacketConn) {
 
 			ipLayer := packet.Layer(layers.LayerTypeIPv4)
 			ip, _ := ipLayer.(*layers.IPv4)
-			send_packets(string(ip.SrcIP), c) // Need server address
+			send_packets(string(ip.DstIP), c) // Need server address
 		}
 	}
 }

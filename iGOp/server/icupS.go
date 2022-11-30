@@ -199,6 +199,19 @@ func deviceExists(name string) bool {
 	return false
 }
 
+func set_flags(header string) {
+	if header[3] == '1' {
+		SSM = true
+	} else {
+		SSM = false
+	}
+	if header[4] == '1' {
+		execute = true
+	} else {
+		execute = false
+	}
+}
+
 func sniffer() {
 	handler, err := pcap.OpenLive("ens160", buffer, false, pcap.BlockForever)
 	if err != nil {
@@ -212,6 +225,7 @@ func sniffer() {
 	for packet := range source.Packets() {
 		payload := convert(packet.ApplicationLayer().Payload())
 		header := payload[0:7]
+		set_flags(header)
 		if strings.HasPrefix(header, "###") {
 			payload = payload[7:]
 

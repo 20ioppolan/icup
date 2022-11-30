@@ -313,8 +313,6 @@ func main() {
 
 		input, _ := consoleReader.ReadString('\n')
 
-		input = strings.ToLower(input)
-
 		if strings.HasPrefix(input, "add") {
 			tokens := strings.Split(input, " ")
 			fmt.Println(tokens[1])
@@ -337,7 +335,6 @@ func main() {
 
 		} else if strings.HasPrefix(input, "exe") {
 
-			// Parse command
 			_, after, _ := strings.Cut(input, " ")
 			id, command, _ := strings.Cut(after, " ")
 			clientid := parse_id(id)

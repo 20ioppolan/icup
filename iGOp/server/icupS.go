@@ -252,17 +252,24 @@ func showalive() {
 	}
 	sort.Ints(keys)
 	teamnumber := 1
-	fmt.Printf("\nTeam %d:", teamnumber)
+	fmt.Printf("Team %d:", teamnumber)
 	for _, value := range keys {
-		if value%TEAMSIZE == TEAMSIZE-1 {
+		if value%TEAMSIZE == TEAMSIZE-1 && value != 4 {
 			teamnumber += 1
 			fmt.Printf("\nTeam %d:", teamnumber)
 		}
-
 		if tf[value] == true {
-			fmt.Printf("\033[92m[%s]\033[0m", strconv.Itoa(value))
+			if value < 10 {
+				fmt.Printf("\033[92m[ %s]\033[0m", strconv.Itoa(value))
+			} else {
+				fmt.Printf("\033[92m[%s]\033[0m", strconv.Itoa(value))
+			}
 		} else {
-			fmt.Printf("\033[91m[%s]\033[0m", strconv.Itoa(value))
+			if value < 10 {
+				fmt.Printf("\033[91m[ %s]\033[0m", strconv.Itoa(value))
+			} else {
+				fmt.Printf("\033[91m[%s]\033[0m", strconv.Itoa(value))
+			}
 		}
 
 	}

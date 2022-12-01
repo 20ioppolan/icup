@@ -35,7 +35,7 @@ var ALIVE = make(map[string]bool)
 var SSM bool = true
 var execute = false
 var PACKETQUEUE []icmp.Message
-var KEY rune = 'b'
+var KEY rune = 'B'
 var TEAMSIZE = 5
 
 var (
@@ -69,7 +69,7 @@ func print_help() {
 	// fmt.Println("\texeonall <command>           Execute <command> on all clients")
 	// fmt.Println("\tsendtoteam <team> <command>  Send <command> to all <team> clients")
 	// fmt.Println("\texeonteam <team> <command>   Execute <command> on all <team> clients")
-	// fmt.Println("\tloadclients                  Loads all clients specified in JSONFILE")
+	fmt.Println("\tload                         Loads all clients specified in targets.txt")
 	fmt.Println("\tcheckalive                   Generates a board of replying clients")
 	// [FIX]fmt.Println("\tshell <ID>                   Creates a direct line with client at ID")
 	fmt.Println("\tkill                         Stops server")
@@ -252,12 +252,10 @@ func showalive() {
 	}
 	sort.Ints(keys)
 	teamnumber := 1
-	fmt.Printf("Team %d:", teamnumber)
+
+	fmt.Printf("Team%3d: ", teamnumber)
 	for _, value := range keys {
-		if value%TEAMSIZE == TEAMSIZE-1 && value != 4 {
-			teamnumber += 1
-			fmt.Printf("\nTeam %d:", teamnumber)
-		}
+
 		if tf[value] == true {
 			if value < 10 {
 				fmt.Printf("\033[92m[ %s]\033[0m", strconv.Itoa(value))
@@ -270,6 +268,10 @@ func showalive() {
 			} else {
 				fmt.Printf("\033[91m[%s]\033[0m", strconv.Itoa(value))
 			}
+		}
+		if value%TEAMSIZE == TEAMSIZE-1 && value != len(keys)-1 {
+			teamnumber += 1
+			fmt.Printf("\nTeam%3d: ", teamnumber)
 		}
 
 	}

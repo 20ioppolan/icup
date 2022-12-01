@@ -25,7 +25,7 @@ var clients = make(map[int]string)
 var SSM bool = true
 var execute = false
 var PACKETQUEUE []icmp.Message
-var KEY rune = 'b'
+var KEY rune = 'B'
 
 var (
 	buffer = int32(1600)

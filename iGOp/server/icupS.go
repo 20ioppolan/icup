@@ -225,21 +225,32 @@ func checkalive(src net.IP, payload string) {
 func showalive() {
 	fmt.Println()
 
+	keys := make([]string, 0, len(ALIVE))
+
 	for aclient, avar := range ALIVE {
 		if avar == true {
 			for clientid, clientip := range clients {
 				if clientip == aclient {
-					fmt.Printf("\033[92m[%d]\033[0m ", clientid)
+					coded := "\033[92m[" + strconv.Itoa(clientid) + "]\033[0m"
+					keys = append(keys, coded)
+					// fmt.Printf("\033[92m[%d]\033[0m ", clientid)
 				}
 			}
 		} else {
 			for clientid, clientip := range clients {
 				if clientip == aclient {
-					fmt.Printf("\033[91m[%d]\033[0m ", clientid)
+					coded := "\033[91m[" + strconv.Itoa(clientid) + "]\033[0m"
+					keys = append(keys, coded)
+					// fmt.Printf("\033[91m[%d]\033[0m ", clientid)
 				}
 			}
 		}
 	}
+	sort.Strings(keys)
+	for _, value := range keys {
+		fmt.Printf("%s", value)
+	}
+
 	fmt.Println()
 }
 

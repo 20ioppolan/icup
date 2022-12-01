@@ -197,12 +197,12 @@ func sendmessage(command string, clientid int, c icmp.PacketConn) {
 	send_packets(ipaddr, c)
 }
 
-// func sendtoall() {
-// 	for k := range clients {
-// 		generate_packet()
-// 		send_packets()
-// 	}
-// }
+func sendtoall(message string, c icmp.PacketConn) {
+	for k := range clients {
+		generate_packet(message, 0)
+		send_packets(clients[k], c)
+	}
+}
 
 func checkalive(src string, payload string) {
 	if payload == "$pong" {

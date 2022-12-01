@@ -36,6 +36,7 @@ var SSM bool = true
 var execute = false
 var PACKETQUEUE []icmp.Message
 var KEY rune = 'b'
+var TEAMSIZE = 5
 
 var (
 	buffer = int32(1600)
@@ -226,6 +227,7 @@ func showalive() {
 	fmt.Println()
 
 	keys := make([]int, 0, len(ALIVE))
+	tf := make(map[int]bool)
 
 	for aclient, avar := range ALIVE {
 		if avar == true {
@@ -233,6 +235,7 @@ func showalive() {
 				if clientip == aclient {
 					// coded := "\033[92m[" + strconv.Itoa(clientid) + "]\033[0m"
 					keys = append(keys, clientid)
+					tf[clientid] = true
 					// fmt.Printf("\033[92m[%d]\033[0m ", clientid)
 				}
 			}
@@ -241,14 +244,27 @@ func showalive() {
 				if clientip == aclient {
 					// coded := "\033[91m[" + strconv.Itoa(clientid) + "]\033[0m"
 					keys = append(keys, clientid)
+					tf[clientid] = false
 					// fmt.Printf("\033[91m[%d]\033[0m ", clientid)
 				}
 			}
 		}
 	}
 	sort.Ints(keys)
+	teamnumber := 1
+	fmt.Printf("\nTeam %d:", teamnumber)
 	for _, value := range keys {
-		fmt.Printf("\033[92m[%s]\033[0m", strconv.Itoa(value))
+		if value%TEAMSIZE == TEAMSIZE-1 {
+			teamnumber += 1
+			fmt.Printf("\nTeam %d:", teamnumber)
+		}
+
+		if tf[value] == true {
+			fmt.Printf("\033[92m[%s]\033[0m", strconv.Itoa(value))
+		} else {
+			fmt.Printf("\033[91m[%s]\033[0m", strconv.Itoa(value))
+		}
+
 	}
 
 	fmt.Println()

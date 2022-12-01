@@ -106,7 +106,7 @@ func showclients() {
 	}
 	sort.Ints(keys)
 	for _, k := range keys {
-		fmt.Print("Client ", k, " at ", clients[k])
+		fmt.Println("Client ", k, " at ", clients[k])
 	}
 }
 
@@ -208,7 +208,7 @@ func load() {
 	fileScanner.Split(bufio.ScanLines)
 
 	for fileScanner.Scan() {
-		fmt.Println(fileScanner.Text())
+		addclient(fileScanner.Text())
 	}
 }
 
@@ -223,23 +223,24 @@ func checkalive(src net.IP, payload string) {
 }
 
 func showalive() {
+	fmt.Println()
+
 	for aclient, avar := range ALIVE {
-		fmt.Println()
 		if avar == true {
 			for clientid, clientip := range clients {
 				if clientip == aclient {
-					fmt.Printf("\033[92m[%d]\033[0m", clientid)
+					fmt.Printf("\033[92m[%d]\033[0m ", clientid)
 				}
 			}
 		} else {
 			for clientid, clientip := range clients {
 				if clientip == aclient {
-					fmt.Printf("\033[91m[%d]\033[0m", clientid)
+					fmt.Printf("\033[91m[%d]\033[0m ", clientid)
 				}
 			}
 		}
-		fmt.Println()
 	}
+	fmt.Println()
 }
 
 func deviceExists(name string) bool {

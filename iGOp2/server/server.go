@@ -318,9 +318,12 @@ func sniffer() {
 
 			// get the part before "["
 			header := parts[0]
-
-			// get the part after "["
-			AfterHeader := parts[1]
+			var AfterHeader string
+			if SSM {
+				AfterHeader = decrypt(parts[1])
+			} else {
+				AfterHeader = parts[1]
+			}
 
 			// split the string by "]"
 			parts = strings.Split(AfterHeader, "]")
@@ -374,6 +377,7 @@ func main() {
 	}
 	print_title()
 	fmt.Println("Type \"help\" for list of commands.")
+	go sniffer()
 	for {
 		consoleReader := bufio.NewReader(os.Stdin)
 		fmt.Print(">> ")

@@ -16,6 +16,7 @@ def main():
         print("Bruh")
     else:
         with open ("targets.txt", "w") as f:
+            f.write(teams+"\n")
             for x in range(1,int(teams)+1):
                 for address in addresses:
                     tokens = address.split('x')

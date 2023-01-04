@@ -38,7 +38,7 @@ const (
 
 func GenerateHeader(segment int, segmented bool, ip string) string {
 	SegmentNum := strconv.Itoa(segment)
-	header := "!!!"
+	header := "###"
 	// ### is server flag
 	// Value 1 (SSM) is Encryption option
 	// Value 2 is execution option

@@ -457,8 +457,10 @@ func main() {
 		case "kill":
 			print_title()
 			os.Exit(0)
+		case "":
+			continue
 		default:
-			fmt.Println("Invalid command: [", input, "]")
+			fmt.Println("Invalid command: [" + input + "]")
 		}
 	}
 }

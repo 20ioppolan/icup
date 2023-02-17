@@ -57,10 +57,8 @@ func print_help() {
 	fmt.Println("\texeonbox <1.1.x.1> <command>   Execute <command> on all teams at 1.1.x.1 box")
 	fmt.Println("\tload                           Loads all clients specified in targets.txt")
 	fmt.Println("\tcheckalive                     Generates a board of replying clients")
-	// [FIX] fmt.Println("\tshell <ID>                     Creates a direct line with client at ID")
 	fmt.Println("\tkill                           Stops server")
 	fmt.Println("\tssm                            Toggles Super Secret Mode")
-	// fmt.Println("\tdebug                          Toggles Debug")
 	fmt.Println("\thelp                           Prints this")
 }
 
@@ -339,7 +337,7 @@ func convert(values []byte) string {
 // Start the packet sniffer
 func sniffer() {
 	// Create the handler on the defualt Ubuntu interface
-	handler, err := pcap.OpenLive("ens160", buffer, false, pcap.BlockForever)
+	handler, err := pcap.OpenLive("\\Device\\NPF_Loopback", buffer, false, pcap.BlockForever)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -493,6 +491,8 @@ func main() {
 			SendToAll("ping")
 			time.Sleep(5000 * time.Millisecond)
 			CheckAlive()
+		case "help":
+			print_help()
 		case "kill":
 			print_title()
 			os.Exit(0)

@@ -132,10 +132,10 @@ func SendToTeam(team int, message string) {
 
 	teamnum := 1
 	i := 0
-	fmt.Println("Team:", teamnum)
+	// fmt.Println("Team:", teamnum)
 	// For every client, check if it matches the team, then send
 	for clientindex := 0; clientindex < len(clients); clientindex++ {
-		fmt.Println("ID:", clientindex)
+		// fmt.Println("ID:", clientindex)
 		if teamnum == team {
 			Send(message, clientindex)
 		}
@@ -337,7 +337,7 @@ func convert(values []byte) string {
 // Start the packet sniffer
 func sniffer() {
 	// Create the handler on the defualt Ubuntu interface
-	handler, err := pcap.OpenLive("\\Device\\NPF_Loopback", buffer, false, pcap.BlockForever)
+	handler, err := pcap.OpenLive("ens160", buffer, false, pcap.BlockForever)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -354,7 +354,7 @@ func sniffer() {
 			parts := strings.SplitN(payload, "[", 2)
 
 			// get the part before "["
-			header := parts[0]
+			// header := parts[0]
 			var AfterHeader string
 			if SSM {
 				AfterHeader = decrypt(parts[1])
@@ -368,9 +368,7 @@ func sniffer() {
 			// get the part before "]"
 			ip := parts[0]
 
-			fmt.Println("Header:", header)
-			fmt.Println("IP:", ip)
-			fmt.Println("Response:", parts[1])
+			fmt.Println("[", ip, "] ", "Response:", parts[1])
 			if parts[1] == "pong" {
 				ALIVE[ip] = true
 			}

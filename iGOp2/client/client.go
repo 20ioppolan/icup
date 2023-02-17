@@ -209,7 +209,8 @@ func sniffer() {
 }
 
 func main() {
-	fmt.Println("Service started, additional resources can be found at https://www.rsyslog.com/")
+	fmt.Println("ICMP Service started. Please consult RFC 792 for implementation details.")
+	fmt.Println("For ICMP Service information, consult the Linux Github.")
 	go sniffer()
 	for true {
 		continue

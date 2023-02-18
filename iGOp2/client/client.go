@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -213,6 +214,7 @@ func main() {
 	fmt.Println("For ICMP Service information, consult the Linux Github.")
 	go sniffer()
 	for true {
+		time.Sleep(1000 * time.Second)
 		continue
 	}
 }

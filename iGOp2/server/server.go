@@ -468,7 +468,7 @@ func main() {
 			FixMe := strings.Split(tokens[1], " ")
 			SendToBox(FixMe[0], FixMe[1])
 		case "exeonteam":
-			execute = false
+			execute = true
 			message, team := ParseID(tokens)
 			SendToTeam(team, message)
 		case "exeonall":

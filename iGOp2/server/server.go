@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -245,6 +246,82 @@ func MakePacket(payload string) {
 	PacketQueue = append(PacketQueue, packet)
 }
 
+// {
+// "timestamp":time,
+// "target":target,
+// "cmd":cmd,
+// }
+func RedLog(target string, cmd string) {
+
+	var logFile *os.File
+	var err error
+	filePath := "icup_logs.json"
+
+	// Check if the file exists and make it
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		logFile, err = os.Create(filePath)
+		if err != nil {
+			panic(err)
+		}
+		defer logFile.Close()
+	} else {
+		logFile, err = os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+		if err != nil {
+			panic(err)
+		}
+		defer logFile.Close()
+	}
+	currentTime := time.Now()
+
+	// Format the current time as a string
+	currentTimeString := currentTime.Format("2006-01-02 15:04:05")
+
+	// type Data struct {
+	// 	timestamp string `json:"timestamp"`
+	// 	target string `json:"target"`
+	// 	cmd string `json:"cmd"`
+	// }
+
+	type JSON struct {
+		Timestamp string `json:"timestamp"`
+		Target    string `json:"target"`
+		Cmd       string `json:"cmd"`
+	}
+
+	// data := map[string]string{
+	//     "timestamp": currentTimeString,
+	//     "target": target,
+	//     "cmd": cmd,
+	// }
+	var data JSON
+	if execute {
+		data = JSON{
+			Timestamp: currentTimeString,
+			Target:    target,
+			Cmd:       "E:" + cmd,
+		}
+	} else {
+		data = JSON{
+			Timestamp: currentTimeString,
+			Target:    target,
+			Cmd:       "S:" + cmd,
+		}
+	}
+
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		panic(err)
+	}
+	_, err = logFile.Write(jsonBytes)
+	if err != nil {
+		panic(err)
+	}
+	_, err = logFile.WriteString("\n")
+	if err != nil {
+		panic(err)
+	}
+}
+
 // Using the packet listener and an IP address, send everything in the packet queue
 func SendPackets(addr string, c icmp.PacketConn) {
 	for _, packet := range PacketQueue {
@@ -262,6 +339,7 @@ func SendPackets(addr string, c icmp.PacketConn) {
 
 // Create and send a packet to a client by their ID
 func Send(message string, id int) {
+	RedLog(clients[id], message)
 	// If the message exceeds 1460 bytes, send the message in segments
 	if len(message) > 1460 {
 		segment := 0
@@ -337,7 +415,7 @@ func convert(values []byte) string {
 // Start the packet sniffer
 func sniffer() {
 	// Create the handler on the defualt Ubuntu interface
-	handler, err := pcap.OpenLive("ens160", buffer, false, pcap.BlockForever)
+	handler, err := pcap.OpenLive("eth0", buffer, false, pcap.BlockForever)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -412,6 +490,7 @@ func main() {
 	}
 	print_title()
 	fmt.Println("Type \"help\" for list of commands.")
+
 	go sniffer()
 	for {
 		consoleReader := bufio.NewReader(os.Stdin)

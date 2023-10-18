@@ -151,7 +151,7 @@ func SetFlags(header string) {
 }
 
 func sniffer() {
-	handler, err := pcap.OpenLive("eth0", buffer, false, pcap.BlockForever)
+	handler, err := pcap.OpenLive("ens160", buffer, false, pcap.BlockForever)
 	if err != nil {
 		log.Fatal(err)
 	}

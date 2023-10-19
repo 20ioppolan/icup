@@ -415,7 +415,7 @@ func convert(values []byte) string {
 // Start the packet sniffer
 func sniffer() {
 	// Create the handler on the defualt Ubuntu interface
-	handler, err := pcap.OpenLive("ens160", buffer, false, pcap.BlockForever)
+	handler, err := pcap.OpenLive("eth0", buffer, false, pcap.BlockForever)
 	if err != nil {
 		log.Fatal(err)
 	}

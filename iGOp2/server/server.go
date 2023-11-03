@@ -335,7 +335,7 @@ func updatepwnBoard(ip string) {
 	// Create the struct
 	data := PwnBoard{
 		IPs:  ip,
-		Type: "GoClient",
+		Type: "ICUP",
 	}
 
 	// Marshal the data

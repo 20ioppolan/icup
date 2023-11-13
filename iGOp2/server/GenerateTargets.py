@@ -1,5 +1,6 @@
 import os
 
+# Generate targets for competition automation
 def main():
     addresses = []
     print("This version contains no error checking, check targets.txt is correct before loading clients.")

